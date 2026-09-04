@@ -1,0 +1,29 @@
+initialization:
+  world_up: [0.0, 1.0, 0.0]
+
+  # A null seed_pose enables deterministic clearance-density seed selection
+  # inside the transformed robust AABB. It defaults to yaw/pitch/roll = 0
+  # and fixed fov_y_deg = 96; no reference image is loaded.
+  reference_match:
+    preview_width: 512
+    preview_height: 512
+    seed_pose: null
+    search_radius_ratio: 0.15
+    yaw_search_range_deg: [-180.0, 180.0]
+    pitch_search_range_deg: [-12.5, 12.5]
+    roll_search_range_deg: [-2.5, 2.5]
+
+  traversal:
+    position_count_k: 20
+    images_per_position_l: 24
+    random_seed: 3407
+    max_position_sampling_attempts: 20000
+    minimum_clearance_radius_ratio: 0.005
+    maximum_clearance_radius_ratio: 0.20
+    minimum_position_separation_radius_ratio: 0.02
+
+  clipping:
+    mode: "auto_local"
+    near_min: 0.001
+    near_radius_ratio: 0.002
+    far_radius_ratio: 4.0

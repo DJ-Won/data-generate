@@ -1,0 +1,13 @@
+numpy<2
+scipy
+PyYAML
+pydantic>=2
+plyfile
+torch
+opencv-python
+tqdm
+pytest
+pyiqa
+# CUDA extension already provided by conda environment gs:
+# diff_gaussian_rasterization
+# FFmpeg executable is provided by conda environment gs.

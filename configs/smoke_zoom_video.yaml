@@ -1,0 +1,131 @@
+input:
+  ply_path: "/home/wdj/projects/data-generate/3dscene/garden/scene.ply"
+
+output:
+  directory: "/home/wdj/projects/data-generate/outputs/smoke"
+  video_filename: "zoom_video.mp4"
+  save_processed_frames: true
+  save_linear_frames: false
+  save_alpha_masks: false
+  save_metadata: true
+  frame_format: "png"
+  overwrite: true
+
+render:
+  device: "cuda"
+  background_rgb: [0.0, 0.0, 0.0]
+  sh_degree: "auto"
+  antialiasing: true
+
+video:
+  width: 320
+  height: 180
+  fps: 10
+  total_frames: 30
+  codec: "libx264"
+  pixel_format: "yuv420p"
+  crf: 23
+  preset: "fast"
+
+scene_analysis:
+  opacity_threshold: 0.02
+  position_quantiles: [0.01, 0.99]
+  scale_extent_sigma: 3.0
+  max_scale_quantile: 0.99
+  analysis_max_samples: 300000
+  io_chunk_size: 500000
+
+camera:
+  fov_y_deg_at_1x: 55.0
+  principal_point_offset_px: [0.0, 0.0]
+  initial_view:
+    position: null
+    look_at: null
+    azimuth_deg: 0.0
+    elevation_deg: 0.0
+    roll_deg: 0.0
+  auto_fit:
+    enabled: true
+    preview_width: 160
+    preview_height: 90
+    alpha_threshold: 0.02
+    target_coverage_ratio: 0.90
+    minimum_coverage_ratio: 0.85
+    max_largest_background_component_ratio: 0.08
+    max_iterations: 8
+    precheck_max_attempts: 2
+  clipping:
+    mode: "auto"
+    near_radius_ratio: 0.01
+    far_radius_ratio: 10.0
+  motion:
+    enabled: true
+    type: "smooth_random_spline"
+    translation_amplitude_ratio: [0.003, 0.002, 0.001]
+    rotation_amplitude_deg: [0.20, 0.25, 0.15]
+    control_point_interval_seconds: 1.0
+    seed: 3407
+
+zoom:
+  curve: "linear"
+  frame_allocation:
+    mode: "proportional_to_zoom_span"
+  lens_switch:
+    color_mode: "crossfade"
+    color_transition_frames: 3
+    camera_offset_mode: "crossfade"
+    camera_transition_frames: 3
+  temporal_color_adjustment:
+    max_exposure_jump_ev: 1.0
+    transition_frames: 0
+    couple_noise_to_iso: true
+    noise_growth_per_ev: 0.5
+  lenses:
+    - name: "uw"
+      zoom_min: 0.50
+      zoom_max: 0.95
+      frame_count: null
+      camera_center_offset_ratio: [-0.002, 0.0, 0.0]
+      temporal_color_jump: {strength: 0.15, position: 0.35}
+      color:
+        exposure_ev: -0.10
+        white_balance_gains: [1.04, 1.00, 0.96]
+        color_correction_matrix: [[1.030, -0.020, -0.010], [-0.010, 1.020, -0.010], [-0.005, -0.015, 1.020]]
+        black_level: 0.0
+        contrast: 1.02
+        saturation: 1.04
+        gamma: 2.2
+        vignette_strength: 0.10
+        noise_std: 0.002
+    - name: "w"
+      zoom_min: 1.00
+      zoom_max: 2.95
+      frame_count: null
+      camera_center_offset_ratio: [0.0, 0.0, 0.0]
+      temporal_color_jump: {strength: -0.10, position: 0.55}
+      color:
+        exposure_ev: 0.0
+        white_balance_gains: [1.0, 1.0, 1.0]
+        color_correction_matrix: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+        black_level: 0.0
+        contrast: 1.0
+        saturation: 1.0
+        gamma: 2.2
+        vignette_strength: 0.05
+        noise_std: 0.001
+    - name: "l"
+      zoom_min: 3.00
+      zoom_max: 5.00
+      frame_count: null
+      camera_center_offset_ratio: [0.002, 0.0, 0.0]
+      temporal_color_jump: {strength: 0.20, position: 0.70}
+      color:
+        exposure_ev: 0.05
+        white_balance_gains: [0.97, 1.0, 1.04]
+        color_correction_matrix: [[1.010, -0.005, -0.005], [-0.015, 1.025, -0.010], [-0.005, -0.010, 1.015]]
+        black_level: 0.0
+        contrast: 1.03
+        saturation: 0.97
+        gamma: 2.2
+        vignette_strength: 0.08
+        noise_std: 0.003

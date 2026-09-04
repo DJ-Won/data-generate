@@ -1,0 +1,4 @@
+import pyiqa
+
+iqa_metric = pyiqa.create_metric('topiq_nr', device='cuda')
+print(iqa_metric('/home/wdj/projects/data-generate/outputs/apartment_traversal/apartment/position_0014/lens_0012/image.png'))

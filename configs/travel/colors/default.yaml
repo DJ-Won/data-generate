@@ -1,0 +1,10 @@
+# Raster appearance and PNG encoding. Camera intrinsics/extrinsics do not belong here.
+render:
+  device: "cuda"
+  background_rgb: [0.0, 0.0, 0.0]
+  sh_degree: "auto"
+  antialiasing: true
+
+image:
+  gamma: 1.0
+  png_compression: 3

@@ -1,0 +1,222 @@
+[
+  {
+    "position": "position_0012",
+    "lens": "lens_0011",
+    "visible_gaussian_count": 12566051,
+    "max_projected_major_axis_to_image_diagonal_ratio": 3.98083568078365,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0012/lens_0011",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0012/lens_0011/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0012/lens_0011/camera.json",
+    "score": 0.5923324227333069,
+    "rank": 1
+  },
+  {
+    "position": "position_0010",
+    "lens": "lens_0023",
+    "visible_gaussian_count": 13072757,
+    "max_projected_major_axis_to_image_diagonal_ratio": 6.798413393228438,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0010/lens_0023",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0010/lens_0023/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0010/lens_0023/camera.json",
+    "score": 0.5785769820213318,
+    "rank": 2
+  },
+  {
+    "position": "position_0011",
+    "lens": "lens_0020",
+    "visible_gaussian_count": 13098916,
+    "max_projected_major_axis_to_image_diagonal_ratio": 1.056122644441753,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0011/lens_0020",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0011/lens_0020/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0011/lens_0020/camera.json",
+    "score": 0.5782178640365601,
+    "rank": 3
+  },
+  {
+    "position": "position_0005",
+    "lens": "lens_0001",
+    "visible_gaussian_count": 7284714,
+    "max_projected_major_axis_to_image_diagonal_ratio": 0.46191308807996323,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0005/lens_0001",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0005/lens_0001/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0005/lens_0001/camera.json",
+    "score": 0.573029100894928,
+    "rank": 4
+  },
+  {
+    "position": "position_0000",
+    "lens": "lens_0013",
+    "visible_gaussian_count": 12808831,
+    "max_projected_major_axis_to_image_diagonal_ratio": 0.8543969372331035,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0000/lens_0013",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0000/lens_0013/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0000/lens_0013/camera.json",
+    "score": 0.5709428191184998,
+    "rank": 5
+  },
+  {
+    "position": "position_0001",
+    "lens": "lens_0021",
+    "visible_gaussian_count": 12817457,
+    "max_projected_major_axis_to_image_diagonal_ratio": 0.9610420275199154,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0001/lens_0021",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0001/lens_0021/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0001/lens_0021/camera.json",
+    "score": 0.5698649287223816,
+    "rank": 6
+  },
+  {
+    "position": "position_0014",
+    "lens": "lens_0016",
+    "visible_gaussian_count": 12287249,
+    "max_projected_major_axis_to_image_diagonal_ratio": 2.161041385423214,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0014/lens_0016",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0014/lens_0016/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0014/lens_0016/camera.json",
+    "score": 0.5681678056716919,
+    "rank": 7
+  },
+  {
+    "position": "position_0007",
+    "lens": "lens_0009",
+    "visible_gaussian_count": 12731373,
+    "max_projected_major_axis_to_image_diagonal_ratio": 2.5544698125661647,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0007/lens_0009",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0007/lens_0009/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0007/lens_0009/camera.json",
+    "score": 0.5655812621116638,
+    "rank": 8
+  },
+  {
+    "position": "position_0013",
+    "lens": "lens_0016",
+    "visible_gaussian_count": 2392913,
+    "max_projected_major_axis_to_image_diagonal_ratio": 1.2559772740154225,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0013/lens_0016",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0013/lens_0016/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0013/lens_0016/camera.json",
+    "score": 0.5605899691581726,
+    "rank": 9
+  },
+  {
+    "position": "position_0004",
+    "lens": "lens_0012",
+    "visible_gaussian_count": 12919129,
+    "max_projected_major_axis_to_image_diagonal_ratio": 1.2499782015525465,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0004/lens_0012",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0004/lens_0012/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0004/lens_0012/camera.json",
+    "score": 0.559222400188446,
+    "rank": 10
+  },
+  {
+    "position": "position_0009",
+    "lens": "lens_0013",
+    "visible_gaussian_count": 11609983,
+    "max_projected_major_axis_to_image_diagonal_ratio": 8.037286918356598,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0009/lens_0013",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0009/lens_0013/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0009/lens_0013/camera.json",
+    "score": 0.5531143546104431,
+    "rank": 11
+  },
+  {
+    "position": "position_0016",
+    "lens": "lens_0019",
+    "visible_gaussian_count": 12234278,
+    "max_projected_major_axis_to_image_diagonal_ratio": 4.685555616738533,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0016/lens_0019",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0016/lens_0019/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0016/lens_0019/camera.json",
+    "score": 0.5529571175575256,
+    "rank": 12
+  },
+  {
+    "position": "position_0006",
+    "lens": "lens_0002",
+    "visible_gaussian_count": 12495747,
+    "max_projected_major_axis_to_image_diagonal_ratio": 1.6693059144404059,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0006/lens_0002",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0006/lens_0002/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0006/lens_0002/camera.json",
+    "score": 0.5418379306793213,
+    "rank": 13
+  },
+  {
+    "position": "position_0019",
+    "lens": "lens_0017",
+    "visible_gaussian_count": 12193327,
+    "max_projected_major_axis_to_image_diagonal_ratio": 1.0049047854209525,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0019/lens_0017",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0019/lens_0017/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0019/lens_0017/camera.json",
+    "score": 0.5387355089187622,
+    "rank": 14
+  },
+  {
+    "position": "position_0008",
+    "lens": "lens_0001",
+    "visible_gaussian_count": 12271798,
+    "max_projected_major_axis_to_image_diagonal_ratio": 1.5424836588232829,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0008/lens_0001",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0008/lens_0001/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0008/lens_0001/camera.json",
+    "score": 0.5274137258529663,
+    "rank": 15
+  },
+  {
+    "position": "position_0002",
+    "lens": "lens_0015",
+    "visible_gaussian_count": 12371790,
+    "max_projected_major_axis_to_image_diagonal_ratio": 5.7239938791003535,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0002/lens_0015",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0002/lens_0015/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0002/lens_0015/camera.json",
+    "score": 0.5260544419288635,
+    "rank": 16
+  },
+  {
+    "position": "position_0018",
+    "lens": "lens_0001",
+    "visible_gaussian_count": 12918734,
+    "max_projected_major_axis_to_image_diagonal_ratio": 2.6343851368636857,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0018/lens_0001",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0018/lens_0001/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0018/lens_0001/camera.json",
+    "score": 0.5212075114250183,
+    "rank": 17
+  },
+  {
+    "position": "position_0015",
+    "lens": "lens_0009",
+    "visible_gaussian_count": 12132997,
+    "max_projected_major_axis_to_image_diagonal_ratio": 5.7034950026563065,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0015/lens_0009",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0015/lens_0009/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0015/lens_0009/camera.json",
+    "score": 0.44310688972473145,
+    "rank": 18
+  },
+  {
+    "position": "position_0017",
+    "lens": "lens_0014",
+    "visible_gaussian_count": 11454235,
+    "max_projected_major_axis_to_image_diagonal_ratio": 9.7694887412072,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0017/lens_0014",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0017/lens_0014/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0017/lens_0014/camera.json",
+    "score": 0.4381190836429596,
+    "rank": 19
+  },
+  {
+    "position": "position_0003",
+    "lens": "lens_0015",
+    "visible_gaussian_count": 5902951,
+    "max_projected_major_axis_to_image_diagonal_ratio": 1.3914724986818618,
+    "combination_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0003/lens_0015",
+    "image_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0003/lens_0015/image.png",
+    "camera_json_path": "/home/wdj/projects/data-generate/outputs/garden_traversal/garden/position_0003/lens_0015/camera.json",
+    "score": 0.38942718505859375,
+    "rank": 20
+  }
+]

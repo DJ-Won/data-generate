@@ -1,0 +1,42 @@
+input:
+  ply_path: "/home/wdj/projects/data-generate/3dscene/garden/scene.ply"
+
+scene:
+  root_transform:
+    translation: [0.0, 0.0, 0.0]
+    rotation_euler_deg: [180.0, 0.0, 0.0]
+    rotation_order: "xyz"
+    scale: 1.0
+
+output:
+  directory: "/home/wdj/projects/data-generate/outputs/test-garden"
+  video_filename: "zoom_video.mp4"
+  save_processed_frames: true
+  save_linear_frames: false
+  save_alpha_masks: false
+  save_metadata: true
+  frame_format: "png"
+  overwrite: false
+
+render:
+  device: "cuda"
+  sh_degree: "auto"
+  antialiasing: true
+
+video:
+  width: 1920
+  height: 1080
+  fps: 30
+  total_frames: 300
+  codec: "libx264"
+  pixel_format: "yuv420p"
+  crf: 18
+  preset: "medium"
+
+scene_analysis:
+  opacity_threshold: 0.02
+  position_quantiles: [0.01, 0.99]
+  scale_extent_sigma: 3.0
+  max_scale_quantile: 0.99
+  analysis_max_samples: 1000000
+  io_chunk_size: 250000

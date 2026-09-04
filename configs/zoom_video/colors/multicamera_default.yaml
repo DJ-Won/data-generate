@@ -1,0 +1,65 @@
+color:
+  background_rgb: [0.0, 0.0, 0.0]
+  lens_switch:
+    color_mode: "crossfade"
+    color_transition_frames: 4
+  temporal_color_adjustment:
+    max_exposure_jump_ev: 1.0
+    transition_frames: 0
+    couple_noise_to_iso: true
+    noise_growth_per_ev: 0.5
+  lenses:
+    - name: "uw"
+      temporal_color_jump:
+        strength: 0.0
+        position: 0.35
+      color:
+        exposure_ev: -0.10
+        white_balance_gains: [1.04, 1.00, 0.96]
+        color_correction_matrix:
+          - [1.030, -0.020, -0.010]
+          - [-0.010, 1.020, -0.010]
+          - [-0.005, -0.015, 1.020]
+        black_level: 0.0
+        contrast: 1.02
+        saturation: 1.04
+        gamma: 2.2
+        vignette_strength: 0.10
+        noise_std: 0.002
+        tone_mapping: "soft_shoulder"
+    - name: "w"
+      temporal_color_jump:
+        strength: 0.0
+        position: 0.55
+      color:
+        exposure_ev: 0.0
+        white_balance_gains: [1.0, 1.0, 1.0]
+        color_correction_matrix:
+          - [1.0, 0.0, 0.0]
+          - [0.0, 1.0, 0.0]
+          - [0.0, 0.0, 1.0]
+        black_level: 0.0
+        contrast: 1.0
+        saturation: 1.0
+        gamma: 2.2
+        vignette_strength: 0.05
+        noise_std: 0.001
+        tone_mapping: "soft_shoulder"
+    - name: "l"
+      temporal_color_jump:
+        strength: 0.0
+        position: 0.70
+      color:
+        exposure_ev: -0.05
+        white_balance_gains: [0.97, 1.0, 1.04]
+        color_correction_matrix:
+          - [1.010, -0.005, -0.005]
+          - [-0.015, 1.025, -0.010]
+          - [-0.005, -0.010, 1.015]
+        black_level: 0.0
+        contrast: 1.03
+        saturation: 0.97
+        gamma: 2.2
+        vignette_strength: 0.08
+        noise_std: 0.003
+        tone_mapping: "soft_shoulder"

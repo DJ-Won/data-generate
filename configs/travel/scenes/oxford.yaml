@@ -1,0 +1,27 @@
+input:
+  ply_path: "/home/wdj/projects/data-generate/3dscene/oxford/scene.ply"
+
+scene:
+  scene_type: "object"
+  root_transform:
+    translation: [0.0, 0.0, 0.0]
+    rotation_euler_deg: [180.0, 0.0, 0.0]
+    rotation_order: "xyz"
+    scale: 1.0
+
+output:
+  root_directory: "/home/wdj/projects/data-generate/outputs/oxford_traversal"
+  scene_name: "oxford"
+  position_label_format: "position_{index:04d}"
+  lens_label_format: "lens_{index:04d}"
+  image_filename: "image.png"
+  metadata_filename: "camera.json"
+  overwrite: false
+
+scene_analysis:
+  opacity_threshold: 0.02
+  position_quantiles: [0.01, 0.99]
+  scale_extent_sigma: 3.0
+  max_scale_quantile: 0.99
+  analysis_max_samples: 1000000
+  io_chunk_size: 250000

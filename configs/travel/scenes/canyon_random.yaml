@@ -1,5 +1,5 @@
 input:
-  ply_path: "/data1/wdj/projects/data-generate/3dscene/canyon/scene.ply"
+  ply_path: "./3dscene/canyon/scene.ply"
 
 scene:
   scene_type: "object"
@@ -10,7 +10,7 @@ scene:
     scale: 1.0
 
 output:
-  root_directory: "/data1/wdj/projects/data-generate/outputs/canyon_random_traversal"
+  root_directory: "./outputs/canyon_random_traversal"
   scene_name: "canyon"
   position_label_format: "position_{index:04d}"
   lens_label_format: "lens_{index:04d}"

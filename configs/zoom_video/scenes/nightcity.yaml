@@ -1,5 +1,5 @@
 input:
-  ply_path: "/home/wdj/projects/data-generate/3dscene/apartment/scene.ply"
+  ply_path: "/home/wdj/projects/data-generate/3dscene/nightcity/scene.ply"
 
 scene:
   root_transform:
@@ -9,7 +9,7 @@ scene:
     scale: 1.0
 
 output:
-  directory: "/home/wdj/projects/data-generate/outputs/zoomvid/apartment/01420005x3"
+  directory: "/home/wdj/projects/data-generate/outputs/zoomvid/nightcity"
   video_filename: "zoom_video.mp4"
   save_processed_frames: true
   save_linear_frames: false

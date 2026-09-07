@@ -37,10 +37,12 @@ conda run -n gs python generate_zoom_video.py \
 在生成前报错。
 
 `--camera-json` 接受场景遍历任务生成的单个 `camera.json`。程序使用其中完整的
-`camera_to_world` 作为初始外参，并把其中的垂直 FOV 作为变焦 1× 内参；主点会按
-JSON 图像尺寸归一化后映射到视频分辨率。near/far 仍由场景和相机 YAML 计算。
+`camera_to_world` 作为初始外参，并把其中的垂直 FOV 作为 camera YAML 中首个镜头
+`zoom_min` 对应的内参；程序会自动换算内部使用的 1× FOV。主点会按 JSON 图像尺寸
+归一化后映射到视频分辨率。near/far 仍由场景和相机 YAML 计算。
 JSON 中的相机位置、旋转矩阵和 `scene_root_transform` 会被严格校验，根变换与
-scene YAML 不一致时拒绝生成。
+scene YAML 不一致时拒绝生成。JSON 中的 `scene_type` 会用于选择 object/interior
+轨迹边界规则；旧 JSON 没有该字段时保持兼容，默认按 interior 处理。
 
 `generate_zoom_video.py` 不再提供 `--config` 组合配置入口。scene、camera、color
 三个拆分参数均为必填；`--camera-json` 可选，省略时按 camera YAML 的初始化策略执行。
@@ -181,18 +183,26 @@ conda run -n gs python generate_scene_traversal.py \
 加载器会拒绝跨文件放错的字段和缺少的必填部分。旧的组合式
 `--config configs/garden/traversal.yaml` 仍保留兼容，但不能与三个新参数混用。
 
-可先使用 `--validate-only`。程序在 GPU 渲染前一次性规划 `position_count_k` 个随机
-机位，并在每个机位生成 `images_per_position_l` 个分层随机镜头。两种策略由
+可先使用 `--validate-only`。程序会在 GPU 渲染前规划机位和镜头。两类场景由
 `scene.scene_type` 选择：
 
 - `interior`：机位位于变换后的鲁棒 AABB 内，并满足净空和最小间距约束；
-- `object`：机位位于场景鲁棒包围球外部的上半球随机球壳中，基础视线朝向场景中心，
-  再叠加配置的 yaw/pitch/roll 扰动。距离、方位角和仰角范围由
-  `initialization.object` 控制。
+- `object`：将场景视为航拍/外部观察目标。机位使用带随机相位的低差异序列分布在
+  上半球壳层，让任意一段候选都尽量覆盖不同方位和仰角；视线始终朝向场景中心附近，
+  只叠加 `initialization.object` 中的小幅 yaw/pitch/roll 扰动，且不会产生上仰镜头。
 
-`yaw_search_range_deg`、`pitch_search_range_deg`、`roll_search_range_deg` 均使用
-`[lower, upper]` 区间，表示相对基础朝向的角度偏移；两个端点必须满足
-`-180 <= lower <= upper <= 180`。
+通用的 `yaw_search_range_deg`、`pitch_search_range_deg` 和
+`roll_search_range_deg` 继续控制 interior。object 使用以下专属字段：
+
+- `distance_range_radius_ratio`、`azimuth_range_deg`、`elevation_range_deg`：
+  初始上半球壳层；
+- `center_yaw_jitter_range_deg`、`center_pitch_jitter_range_deg`、
+  `roll_jitter_range_deg`：相对中心视线的小幅扰动；
+- `random_candidate_multiplier`：object 随机质量模式的 TOPIQ-NR 评分预算为
+  `target_count_k * random_candidate_multiplier`；覆盖预检失败不消耗该预算。
+
+object 的 yaw/pitch/roll 不叠加 `seed_pose` 中的旧角度，只使用中心视线和上述专属
+jitter；`seed_pose` 在该分支仅提供可选初始位置和固定 FOV。
 
 object 示例：
 
@@ -203,32 +213,53 @@ conda run -n gs python generate_scene_traversal.py \
   --color-config configs/travel/colors/default.yaml
 ```
 
-质量门控随机策略由 `initialization.traversal.strategy: random` 启用。候选视角按
-`random_seed` 确定的随机顺序逐个渲染并执行 TOPIQ-NR；只保存严格满足
-`topiq_nr > topiq_nr_threshold_l` 的结果，接受数量达到 `target_count_k` 后立即结束：
+每个 object 候选在完整分辨率渲染和 TOPIQ-NR 之前，先以
+`object.coverage.preview_width/preview_height` 渲染 alpha。覆盖率定义为
+`alpha > alpha_threshold` 的像素比例；若低于 `minimum_pixel_ratio`，相机保持
+朝向不变并沿场景中心径向拉近。搜索先用最近的合法外部位置确定目标是否可达，再在
+失败/成功距离之间进行有界搜索，最终保留满足覆盖率的最远机位，避免越过阈值后仍贴近
+场景。低分辨率搜索最多评估 `max_iterations` 次，选定机位还会以最终输出分辨率复核；
+若预览存在像素离散误差，最终分辨率同样执行有界搜索。拉近下界是该方向上鲁棒 AABB
+的外边界加
+`exterior_margin_radius_ratio * scene_radius`，因此相机不会进入鲁棒包围盒。
+planned 模式无法满足覆盖率时会明确报错；random 模式会跳过该候选，避免继续执行昂贵
+的完整渲染和评分，并从备用方向继续采样。`max_position_sampling_attempts` 控制可用于
+覆盖预检的机位上限；候选按镜头编号优先排序，因此会先从所有不同机位各取一个镜头，
+再考虑同一机位的额外镜头。每个 `camera.json` 都记录规划/最终位置、距离、覆盖率和
+搜索历史。
 
-- `random.target_count_k`：需要接受的场景数 k；
-- `random.topiq_nr_threshold_l`：TOPIQ-NR 严格下限 l；
-- `max_position_sampling_attempts`：位置采样预算，预算内采到的有效位置全部使用；
-- `images_per_position_l`：每个有效位置的图像数；总候选数等于实际位置数与该值的
-  乘积，不再设置单独的图像候选上限；
-- `random.device`：评分设备，通常为 `cuda`。
+object 的质量门控由 `initialization.traversal.strategy: random` 启用。渲染过程中
+始终维护 TOPIQ-NR 分数最高的 k 组候选：新分数高于当前最低分时立即替换内存候选。
+累计得到 k 个严格满足 `topiq_nr > topiq_nr_threshold_l` 的结果后提前结束；如果
+评分预算耗尽仍不足 k 个达标结果，则不报错，统一保存已评分候选中最高的 k 组（默认
+就是十组），并在终端打印回退警告、在 summary 中写入 `fallback_used: true`。
+`termination_reason` 会区分 `threshold_complete`、`score_budget_exhausted` 和
+`candidate_pool_exhausted`，`search_exhaustive` 表示是否真的穷尽了覆盖候选池。
+只有当整个覆盖候选池中都
+找不到 k 个满足覆盖率的视角时才会少于 k，此时 `fallback_incomplete: true` 会明确
+标记这一物理/采样约束不足：
+
+- `random.target_count_k`：最终保存数量 k；
+- `random.topiq_nr_threshold_l`：TOPIQ-NR 严格下限；
+- `random.device`：评分设备，通常为 `cuda`；
+- `object.random_candidate_multiplier`：TOPIQ-NR 评分预算相对 k 的倍数。
 
 ```bash
 conda run -n gs python generate_scene_traversal.py \
-  --scene-config configs/travel/scenes/garden_random.yaml \
-  --camera-config configs/travel/cameras/random.yaml \
+  --scene-config configs/travel/scenes/canyon_random.yaml \
+  --camera-config configs/travel/cameras/object_random.yaml \
   --color-config configs/travel/colors/default.yaml
 ```
 
-未通过阈值的图像不会落盘。每个已接受 `camera.json` 的采样标签为 `random`，
-并在 `image_quality` 中记录 TOPIQ-NR 分数；整体尝试与接受统计写入
-`traversal_summary.json.random_quality_result`。
+interior 的 random 行为保持不变：使用
+`max_position_sampling_attempts * images_per_position_l` 形成候选，低于阈值的图像
+不落盘，达到 k 后结束，最终不足 k 时仍会报错。其示例继续使用
+`configs/travel/cameras/random.yaml`。
 
-两种策略都只改变外参；分辨率、主点、fx/fy 和 FOV 在整次遍历中固定，其中 FOV
-使用 `reference_match.seed_pose.fov_y_deg`。`random_seed` 保证外参可复现；
-`preview_width/preview_height` 就是输出 PNG 尺寸，不读取参考图片。当前提供的
-travel 相机配置统一使用 512×512；如需其他分辨率，只需同时修改这两个字段。
+两种场景都保持分辨率、主点、fx/fy 和 FOV 固定，其中 FOV 使用
+`reference_match.seed_pose.fov_y_deg`；object 覆盖拟合只改变相机位置。
+`random_seed` 保证机位和姿态可复现，`preview_width/preview_height` 是最终输出
+PNG 尺寸。当前相机配置使用 512x512；如需其他分辨率，同时修改两个字段即可。
 
 
 interior 自动种子有两种等价写法：整个 `seed_pose: null`，或保留 seed_pose 并设置

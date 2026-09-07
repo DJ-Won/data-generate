@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 from pathlib import Path
 from typing import Literal
@@ -477,6 +478,11 @@ def apply_traversal_camera_json(
     if not isinstance(raw, dict):
         raise ValueError(f"camera JSON root must be an object: {resolved_path}")
 
+    scene_type = raw.get("scene_type", "interior")
+    if scene_type not in ("object", "interior"):
+        raise ValueError(
+            "camera JSON scene_type must be 'object' or 'interior' when present"
+        )
     camera = _camera_json_section(raw, "camera")
     intrinsics = _camera_json_section(raw, "intrinsics")
     _validate_camera_json_root_transform(raw, cfg)
@@ -528,14 +534,24 @@ def apply_traversal_camera_json(
         (cx / width - 0.5) * cfg.video.width,
         (cy / height - 0.5) * cfg.video.height,
     )
+    minimum_zoom = cfg.zoom.lenses[0].zoom_min
+    # A traversal camera JSON describes the first rendered zoom endpoint. Convert
+    # that vertical FOV to the internal 1x focal-length baseline so that rendering
+    # at the configured minimum zoom reproduces the JSON intrinsics exactly.
+    fov_y_deg_at_1x = math.degrees(
+        2.0
+        * math.atan(
+            minimum_zoom * math.tan(math.radians(fov_y_deg) / 2.0)
+        )
+    )
     merged = cfg.model_dump(mode="python")
-    merged["camera"]["fov_y_deg_at_1x"] = fov_y_deg
+    merged["camera"]["fov_y_deg_at_1x"] = fov_y_deg_at_1x
     merged["camera"]["principal_point_offset_px"] = principal_offset
-    merged["camera"]["initialization"]["scene_type"] = "interior"
+    merged["camera"]["initialization"]["scene_type"] = scene_type
     merged["camera"]["initialization"]["resolved_pose"] = {
         "position": c2w[:3, 3].tolist(),
         "camera_to_world": c2w.tolist(),
-        "fov_y_deg_at_1x": fov_y_deg,
+        "fov_y_deg_at_1x": fov_y_deg_at_1x,
         "source": f"traversal_camera_json:{resolved_path}",
         "candidate_index": None,
     }

@@ -24,7 +24,10 @@ def main() -> int:
     )
     parser.add_argument(
         "--camera-json",
-        help="optional traversal camera.json; overrides the initial pose and 1x intrinsics",
+        help=(
+            "optional traversal camera.json; overrides the initial pose and supplies "
+            "the intrinsics at the camera config's minimum zoom"
+        ),
     )
     parser.add_argument(
         "--validate-only", action="store_true", help="validate configuration and exit"

@@ -1,2 +1,4 @@
 3dscene
 output
+outputs
+*.pyc

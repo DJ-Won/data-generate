@@ -1,0 +1,111 @@
+camera:
+  fov_y_deg_at_1x: 55.0
+  principal_point_offset_px: [0.0, 0.0]
+  initial_view:
+    position: null
+    look_at: null
+    azimuth_deg: 0.0
+    elevation_deg: 0.0
+    roll_deg: 0.0
+  auto_fit:
+    enabled: true
+    preview_width: 320
+    preview_height: 180
+    alpha_threshold: 0.02
+    target_coverage_ratio: 0.90
+    minimum_coverage_ratio: 0.85
+    max_largest_background_component_ratio: 0.08
+    max_iterations: 20
+    precheck_max_attempts: 3
+  clipping:
+    mode: "auto_local"
+    near_min: 0.001
+    near_radius_ratio: 0.002
+    far_radius_ratio: 4.0
+  initialization:
+    scene_type: "interior"
+    mode: "reference_image"
+    reference:
+      image_path: "/home/wdj/projects/data-generate/3dscene/garden/ref5.png"
+      image_paths: []
+      crop_xywh: null
+      reference_zoom_ratio: 1.0
+      ignore_color_difference: true
+      relative_rotation_euler_deg: []
+    manual_pose:
+      position: null
+      look_at: null
+      up: [0.0, 1.0, 0.0]
+      yaw_deg: null
+      pitch_deg: null
+      roll_deg: 0.0
+      fov_y_deg: null
+    interior:
+      world_up: [0.0, 1.0, 0.0]
+      position_quantiles: [0.02, 0.98]
+      voxel_resolution: 64
+      candidate_position_count: 128
+      directions_per_position: 24
+      minimum_clearance_radius_ratio: 0.005
+      maximum_clearance_radius_ratio: 0.20
+      minimum_coverage_ratio: 0.85
+      maximum_largest_background_ratio: 0.08
+    reference_match:
+      preview_width: 120
+      preview_height: 120
+      seed_pose:
+        position: [0.363742858171463, 0.963081955909729, -2.07816481590271]
+        yaw_deg: 147.82784118453603
+        pitch_deg: -13.228101298338052
+        roll_deg: 0.0
+        fov_y_deg: 96.0
+      search_radius_ratio: 0.15
+      yaw_search_range_deg: 180.0
+      pitch_search_range_deg: 25.0
+      roll_search_range_deg: 5.0
+      fov_y_range_deg: [25.0, 100.0]
+      optimize_position: true
+      optimize_rotation: true
+      optimize_fov: true
+      top_k: 12
+      refine_iterations: 20
+      minimum_similarity_score: 0.55
+      ambiguity_score_margin: 0.03
+      selected_candidate_index: null
+      loss:
+        grayscale_weight: 1.0
+        gradient_weight: 1.0
+        ssim_weight: 1.0
+        lpips_weight: 0.0
+    resolved_pose: null
+  motion:
+    enabled: false
+    type: "smooth_random_spline"
+    translation_amplitude_ratio: [0.003, 0.002, 0.001]
+    rotation_amplitude_deg: [0.20, 0.25, 0.15]
+    control_point_interval_seconds: 1.0
+    seed: 3407
+
+zoom:
+  curve: "linear"
+  frame_allocation:
+    mode: "proportional_to_zoom_span"
+  lens_switch:
+    camera_offset_mode: "crossfade"
+    camera_transition_frames: 4
+  lenses:
+    - name: "uw"
+      zoom_min: 0.50
+      zoom_max: 0.75
+      frame_count: null
+      camera_center_offset_ratio: [-0.004, 0.0, 0.0]
+    - name: "w"
+      zoom_min: 0.8
+      zoom_max: 1.83
+      frame_count: null
+      camera_center_offset_ratio: [0.0, 0.0, 0.0]
+    - name: "l"
+      zoom_min: 1.9
+      zoom_max: 3.0
+      frame_count: null
+      camera_center_offset_ratio: [0.004, 0.010, 0.0]

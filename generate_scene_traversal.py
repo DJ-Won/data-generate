@@ -56,12 +56,26 @@ def main() -> int:
             sampling = cfg.initialization.traversal
             if sampling.strategy == "random":
                 quality = sampling.random
-                print(
-                    f"Configuration is valid: random strategy targets {quality.target_count_k} "
-                    f"captures with topiq_nr > {quality.topiq_nr_threshold_l}, using all "
-                    f"valid positions from {sampling.max_position_sampling_attempts} "
-                    f"position attempts x {sampling.images_per_position_l} images -> {target}"
-                )
+                if cfg.scene.scene_type == "object":
+                    candidate_budget = (
+                        quality.target_count_k
+                        * cfg.initialization.object.random_candidate_multiplier
+                    )
+                    print(
+                        "Configuration is valid: object random strategy retains the "
+                        f"best {quality.target_count_k} captures with topiq_nr > "
+                        f"{quality.topiq_nr_threshold_l} preferred, scores at most "
+                        f"{candidate_budget} coverage-qualified candidates, and uses "
+                        f"up to {sampling.max_position_sampling_attempts} sampled "
+                        f"directions as the coverage reserve -> {target}"
+                    )
+                else:
+                    print(
+                        f"Configuration is valid: random strategy targets {quality.target_count_k} "
+                        f"captures with topiq_nr > {quality.topiq_nr_threshold_l}, using all "
+                        f"valid positions from {sampling.max_position_sampling_attempts} "
+                        f"position attempts x {sampling.images_per_position_l} images -> {target}"
+                    )
                 return 0
             count = (
                 sampling.position_count_k

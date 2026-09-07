@@ -1,0 +1,44 @@
+initialization:
+  world_up: [0.0, 1.0, 0.0]
+
+  reference_match:
+    preview_width: 512
+    preview_height: 512
+    seed_pose:
+      position: null
+      yaw_deg: 0.0
+      pitch_deg: 0.0
+      roll_deg: 0.0
+      fov_y_deg: 70.0
+
+  traversal:
+    strategy: "planned"
+    position_count_k: 20
+    images_per_position_l: 1
+    random_seed: 3407
+    max_position_sampling_attempts: 5000
+    minimum_clearance_radius_ratio: 0.005
+    maximum_clearance_radius_ratio: 0.20
+    minimum_position_separation_radius_ratio: 0.02
+
+  object:
+    distance_range_radius_ratio: [1.25, 2.0]
+    azimuth_range_deg: [-180.0, 180.0]
+    elevation_range_deg: [0.0, 85.0]
+    center_yaw_jitter_range_deg: [-4.0, 4.0]
+    center_pitch_jitter_range_deg: [-4.0, 4.0]
+    roll_jitter_range_deg: [-2.0, 2.0]
+    random_candidate_multiplier: 50
+    coverage:
+      minimum_pixel_ratio: 0.85
+      alpha_threshold: 0.02
+      preview_width: 128
+      preview_height: 128
+      max_iterations: 8
+      exterior_margin_radius_ratio: 0.01
+
+  clipping:
+    mode: "auto_local"
+    near_min: 0.001
+    near_radius_ratio: 0.002
+    far_radius_ratio: 4.0

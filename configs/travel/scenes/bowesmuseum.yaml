@@ -1,5 +1,5 @@
 input:
-  ply_path: "./3dscene/canyon/scene.ply"
+  ply_path: "/home/wdj/projects/data-generate/3dscene/bowesmuseum/scene.ply"
 
 scene:
   scene_type: "object"
@@ -10,8 +10,8 @@ scene:
     scale: 1.0
 
 output:
-  root_directory: "./outputs/canyon_traversal"
-  scene_name: "canyon"
+  root_directory: "/home/wdj/projects/data-generate/outputs/bowesmuseum_traversal"
+  scene_name: "bowesmuseum"
   position_label_format: "position_{index:04d}"
   lens_label_format: "lens_{index:04d}"
   image_filename: "image.png"

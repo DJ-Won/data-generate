@@ -557,6 +557,7 @@ def _write_traversal_camera_json(path, cfg):
     c2w[:3, 3] = [1.0, 2.0, 3.0]
     raw = {
         "scene_name": "test",
+        "scene_type": "object",
         "camera": {
             "position": [1.0, 2.0, 3.0],
             "camera_to_world": c2w.tolist(),
@@ -577,7 +578,7 @@ def _write_traversal_camera_json(path, cfg):
     return c2w, raw
 
 
-def test_camera_json_initializes_zoom_pose_and_intrinsics(tmp_path):
+def test_camera_json_initializes_zoom_pose_at_configured_minimum_zoom(tmp_path):
     combined = GeneratorConfig.model_validate(config_dict(tmp_path))
     paths, _ = _write_zoom_config_parts(tmp_path, combined)
     camera_json = tmp_path / "camera.json"
@@ -591,10 +592,30 @@ def test_camera_json_initializes_zoom_pose_and_intrinsics(tmp_path):
     assert resolved is not None
     np.testing.assert_allclose(resolved.camera_to_world, expected_c2w)
     np.testing.assert_allclose(resolved.position, expected_c2w[:3, 3])
-    assert resolved.fov_y_deg_at_1x == pytest.approx(61.0)
-    assert loaded.camera.fov_y_deg_at_1x == pytest.approx(61.0)
+    minimum_zoom = loaded.zoom.lenses[0].zoom_min
+    expected_fov_y_at_1x = np.degrees(
+        2.0 * np.arctan(minimum_zoom * np.tan(np.radians(61.0) / 2.0))
+    )
+    assert resolved.fov_y_deg_at_1x == pytest.approx(expected_fov_y_at_1x)
+    assert loaded.camera.fov_y_deg_at_1x == pytest.approx(expected_fov_y_at_1x)
+    assert np.degrees(intrinsics(loaded, minimum_zoom)[5]) == pytest.approx(61.0)
     np.testing.assert_allclose(loaded.camera.principal_point_offset_px, [16.0, -9.0])
     assert resolved.source == f"traversal_camera_json:{camera_json.resolve()}"
+    assert loaded.camera.initialization.scene_type == "object"
+
+
+def test_camera_json_without_scene_type_retains_legacy_interior_default(tmp_path):
+    combined = GeneratorConfig.model_validate(config_dict(tmp_path))
+    paths, _ = _write_zoom_config_parts(tmp_path, combined)
+    camera_json = tmp_path / "camera.json"
+    _, raw = _write_traversal_camera_json(camera_json, combined)
+    del raw["scene_type"]
+    camera_json.write_text(json.dumps(raw), encoding="utf-8")
+
+    loaded = load_config_parts(
+        *paths, camera_json_path=camera_json, check_output=False
+    )
+
     assert loaded.camera.initialization.scene_type == "interior"
 
 

@@ -15,6 +15,7 @@ from scene_traversal import (
     TraversalConfig,
     _camera_frame,
     _capture_metadata,
+    _fit_object_camera_coverage,
     load_traversal_config_parts,
     capture_paths,
     plan_traversal,
@@ -233,10 +234,14 @@ def test_object_traversal_is_external_center_facing_and_reproducible(tmp_path):
     initialization = raw["initialization"]
     raw["scene"]["scene_type"] = "object"
     initialization["reference_match"]["seed_pose"]["position"] = None
-    initialization["reference_match"]["seed_pose"]["yaw_deg"] = 0.0
-    initialization["reference_match"]["seed_pose"]["pitch_deg"] = 0.0
-    initialization["reference_match"]["yaw_search_range_deg"] = [-10.0, 10.0]
-    initialization["reference_match"]["pitch_search_range_deg"] = [-5.0, 5.0]
+    # Object cameras derive their orientation from the scene center rather than
+    # inheriting legacy seed angles.
+    initialization["reference_match"]["seed_pose"]["yaw_deg"] = 120.0
+    initialization["reference_match"]["seed_pose"]["pitch_deg"] = 20.0
+    initialization["reference_match"]["seed_pose"]["roll_deg"] = 35.0
+    initialization["reference_match"]["yaw_search_range_deg"] = [-90.0, 90.0]
+    initialization["reference_match"]["pitch_search_range_deg"] = [-60.0, 60.0]
+    initialization["reference_match"]["roll_search_range_deg"] = [-45.0, 45.0]
     initialization["traversal"]["position_count_k"] = 8
     initialization["traversal"]["images_per_position_l"] = 4
     initialization["traversal"]["minimum_position_separation_radius_ratio"] = 0.2
@@ -244,6 +249,9 @@ def test_object_traversal_is_external_center_facing_and_reproducible(tmp_path):
         "distance_range_radius_ratio": [1.5, 2.0],
         "azimuth_range_deg": [-180.0, 180.0],
         "elevation_range_deg": [0.0, 90.0],
+        "center_yaw_jitter_range_deg": [-3.0, 3.0],
+        "center_pitch_jitter_range_deg": [-3.0, 3.0],
+        "roll_jitter_range_deg": [-1.0, 1.0],
     }
     cfg_a = TraversalConfig.model_validate(raw)
     cfg_b = TraversalConfig.model_validate(raw)
@@ -274,6 +282,21 @@ def test_object_traversal_is_external_center_facing_and_reproducible(tmp_path):
         for item in positions_a
     )
     assert positions_a[0].seed_position_source == "automatic_object_shell"
+    horizontal_forward, horizontal_right, _ = traversal_module._world_basis(
+        cfg_a.initialization.world_up
+    )
+    azimuths = np.mod(
+        [
+            math.atan2(
+                float(np.dot(item.position, horizontal_right)),
+                float(np.dot(item.position, horizontal_forward)),
+            )
+            for item in positions_a
+        ],
+        2.0 * math.pi,
+    )
+    wrapped = np.r_[np.sort(azimuths), np.sort(azimuths)[0] + 2.0 * math.pi]
+    assert np.max(np.diff(wrapped)) < math.radians(70.0)
 
     cameras = [_camera_frame(cfg_a, scene, capture) for capture in captures_a]
     first = cameras[0]
@@ -284,7 +307,10 @@ def test_object_traversal_is_external_center_facing_and_reproducible(tmp_path):
     for capture, camera in zip(captures_a, cameras):
         desired = scene.analysis.center - capture.position.position
         desired /= np.linalg.norm(desired)
-        assert float(np.dot(camera.c2w[:3, 2], desired)) > math.cos(math.radians(15.0))
+        assert float(np.dot(camera.c2w[:3, 2], desired)) > math.cos(math.radians(5.0))
+        assert float(np.dot(camera.c2w[:3, 2], np.array([0.0, 1.0, 0.0]))) <= 1e-12
+        assert capture.pitch_deg <= 0.0
+        assert -1.0 <= capture.roll_deg <= 1.0
 
     image_path, _ = capture_paths(
         cfg_a, captures_a[0].position.label, captures_a[0].lens_label
@@ -305,6 +331,36 @@ def test_object_traversal_is_external_center_facing_and_reproducible(tmp_path):
     assert metadata["sampling"]["strategy"] == "object_shell"
     assert metadata["sampling"]["camera_inside_robust_aabb"] is False
     assert metadata["geometry_quality"] == geometry_quality
+
+
+def test_object_random_plans_a_direction_reserve_before_extra_lenses(tmp_path):
+    raw = traversal_config(tmp_path).model_dump(mode="python")
+    raw["scene"]["scene_type"] = "object"
+    initialization = raw["initialization"]
+    initialization["reference_match"]["seed_pose"]["position"] = None
+    sampling = initialization["traversal"]
+    sampling["strategy"] = "random"
+    sampling["images_per_position_l"] = 5
+    sampling["max_position_sampling_attempts"] = 12
+    sampling["minimum_position_separation_radius_ratio"] = 0.0
+    sampling["random"] = {
+        "target_count_k": 2,
+        "topiq_nr_threshold_l": 0.8,
+        "device": "cuda",
+    }
+    initialization["object"]["random_candidate_multiplier"] = 2
+    cfg = TraversalConfig.model_validate(raw)
+
+    positions, captures = plan_traversal(cfg, FakeInteriorScene())
+    ordered = sorted(
+        captures,
+        key=lambda capture: (capture.lens_index, capture.position.index),
+    )
+
+    assert len(positions) == 12
+    assert len(captures) == 60
+    assert [item.position.index for item in ordered[:12]] == list(range(12))
+    assert {item.lens_index for item in ordered[:12]} == {0}
 
 
 def test_object_traversal_rejects_an_interior_seed(tmp_path):
@@ -548,5 +604,425 @@ def test_random_quality_run_rejects_equal_threshold_and_stops_at_k(
         "accepted_count": 2,
         "rejected_count": 1,
         "completed": True,
+    }
+    assert written_json["traversal_summary.json"] == summary
+
+def test_object_coverage_fit_moves_camera_closer_until_ratio_is_met(tmp_path):
+    raw = traversal_config(tmp_path).model_dump(mode="python")
+    raw["scene"]["scene_type"] = "object"
+    raw["initialization"]["object"]["coverage"] = {
+        "minimum_pixel_ratio": 0.6,
+        "alpha_threshold": 0.02,
+        "preview_width": 10,
+        "preview_height": 10,
+        "max_iterations": 6,
+        "exterior_margin_radius_ratio": 0.01,
+    }
+    cfg = TraversalConfig.model_validate(raw)
+    scene = FakeInteriorScene()
+    position = PositionPlan(
+        0,
+        "position_0000",
+        np.array([0.0, 0.0, -20.0]),
+        np.zeros(3),
+        1.0,
+        "configured_object_exterior",
+        np.zeros(3),
+    )
+    capture = CapturePlan(
+        position,
+        0,
+        "lens_0000",
+        180.0,
+        0.0,
+        0.0,
+        70.0,
+    )
+    camera = _camera_frame(cfg, scene, capture)
+
+    class CoverageRenderer:
+        def render(self, current_camera, width, height, *, alpha_only=False):
+            assert alpha_only is True
+            distance = float(np.linalg.norm(current_camera.position))
+            # The low-resolution preview is deliberately optimistic so this
+            # also exercises output-resolution validation and correction.
+            coverage_scale = 8.0 if width == 10 else 6.0
+            ratio = min(1.0, coverage_scale / distance)
+            alpha = np.zeros((height, width), dtype=np.float32)
+            alpha.flat[: math.ceil(ratio * alpha.size)] = 1.0
+            return alpha
+
+    clearance_tree = traversal_module.cKDTree(scene.effective_position_sample())
+    fitted, metadata = _fit_object_camera_coverage(
+        cfg,
+        scene,
+        CoverageRenderer(),
+        camera,
+        clearance_tree,
+    )
+
+    assert metadata["initial_pixel_ratio"] < 0.6
+    assert metadata["constraints_met"] is True
+    assert metadata["camera_moved_closer"] is True
+    assert metadata["final_pixel_ratio"] >= 0.6
+    assert metadata["final_pixel_ratio"] < 0.7
+    assert metadata["preview_evaluation_count"] <= 6
+    assert metadata["output_validation_count"] <= 6
+    assert metadata["evaluation_count"] == (
+        metadata["preview_evaluation_count"]
+        + metadata["output_validation_count"]
+    )
+    assert metadata["output_validation_size"] == [120, 120]
+    assert (
+        metadata["minimum_exterior_distance_to_center"]
+        <= metadata["final_distance_to_center"]
+        < metadata["initial_distance_to_center"]
+    )
+    assert metadata["final_distance_to_center"] > (
+        metadata["minimum_exterior_distance_to_center"] + 1.0
+    )
+    preview_passing_distances = [
+        item["distance_to_center"]
+        for item in metadata["history"]
+        if item["pixel_ratio"] >= 0.6
+    ]
+    assert metadata["preview_selected_distance_to_center"] == max(
+        preview_passing_distances
+    )
+    assert metadata["output_validation_history"][0]["pixel_ratio"] < 0.6
+    output_passing_distances = [
+        item["distance_to_center"]
+        for item in metadata["output_validation_history"]
+        if item["pixel_ratio"] >= 0.6
+    ]
+    assert metadata["final_distance_to_center"] == max(output_passing_distances)
+    np.testing.assert_allclose(
+        fitted.position / np.linalg.norm(fitted.position),
+        camera.position / np.linalg.norm(camera.position),
+    )
+    assert not np.all(
+        (fitted.position >= scene.analysis.aabb_min)
+        & (fitted.position <= scene.analysis.aabb_max)
+    )
+    image_path, _ = capture_paths(cfg, position.label, capture.lens_label)
+    capture_metadata = _capture_metadata(
+        cfg,
+        scene,
+        capture,
+        fitted,
+        image_path,
+        object_coverage=metadata,
+    )
+    sampling_metadata = capture_metadata["sampling"]
+    assert (
+        sampling_metadata["distance_to_nearest_effective_gaussian"]
+        == metadata["final_distance_to_nearest_effective_gaussian"]
+    )
+    assert sampling_metadata["planned_distance_to_nearest_effective_gaussian"] == 1.0
+    np.testing.assert_allclose(
+        sampling_metadata["offset_from_seed"],
+        fitted.position
+        - np.asarray(cfg.initialization.reference_match.seed_pose.position),
+    )
+
+
+def test_object_coverage_output_validation_can_restore_farther_camera(tmp_path):
+    raw = traversal_config(tmp_path).model_dump(mode="python")
+    raw["scene"]["scene_type"] = "object"
+    raw["initialization"]["object"]["coverage"] = {
+        "minimum_pixel_ratio": 0.6,
+        "alpha_threshold": 0.02,
+        "preview_width": 10,
+        "preview_height": 10,
+        "max_iterations": 6,
+        "exterior_margin_radius_ratio": 0.01,
+    }
+    cfg = TraversalConfig.model_validate(raw)
+    scene = FakeInteriorScene()
+    position = PositionPlan(
+        0,
+        "position_0000",
+        np.array([0.0, 0.0, -20.0]),
+        np.zeros(3),
+        1.0,
+        "configured_object_exterior",
+        np.zeros(3),
+    )
+    capture = CapturePlan(
+        position,
+        0,
+        "lens_0000",
+        180.0,
+        0.0,
+        0.0,
+        70.0,
+    )
+    camera = _camera_frame(cfg, scene, capture)
+
+    class PessimisticPreviewRenderer:
+        def render(self, current_camera, width, height, *, alpha_only=False):
+            assert alpha_only is True
+            distance = float(np.linalg.norm(current_camera.position))
+            coverage_scale = 6.0 if width == 10 else 12.0
+            ratio = min(1.0, coverage_scale / distance)
+            alpha = np.zeros((height, width), dtype=np.float32)
+            alpha.flat[: math.ceil(ratio * alpha.size)] = 1.0
+            return alpha
+
+    clearance_tree = traversal_module.cKDTree(scene.effective_position_sample())
+    fitted, metadata = _fit_object_camera_coverage(
+        cfg,
+        scene,
+        PessimisticPreviewRenderer(),
+        camera,
+        clearance_tree,
+    )
+
+    assert metadata["preview_selected_distance_to_center"] < 20.0
+    assert metadata["output_validation_count"] == 1
+    assert metadata["final_distance_to_center"] == pytest.approx(20.0)
+    assert metadata["final_pixel_ratio"] >= 0.6
+    assert metadata["camera_moved_closer"] is False
+    np.testing.assert_allclose(fitted.position, camera.position)
+
+
+def test_object_coverage_rejects_camera_inside_exterior_margin(tmp_path):
+    raw = traversal_config(tmp_path).model_dump(mode="python")
+    raw["scene"]["scene_type"] = "object"
+    raw["initialization"]["object"]["coverage"][
+        "exterior_margin_radius_ratio"
+    ] = 100.0
+    cfg = TraversalConfig.model_validate(raw)
+    scene = FakeInteriorScene()
+    position = PositionPlan(
+        0,
+        "position_0000",
+        np.array([0.0, 0.0, -20.0]),
+        np.zeros(3),
+        1.0,
+        "configured_object_exterior",
+        np.zeros(3),
+    )
+    capture = CapturePlan(
+        position,
+        0,
+        "lens_0000",
+        180.0,
+        0.0,
+        0.0,
+        70.0,
+    )
+    camera = _camera_frame(cfg, scene, capture)
+    clearance_tree = traversal_module.cKDTree(scene.effective_position_sample())
+
+    with pytest.raises(RuntimeError, match="inside the configured AABB exterior margin"):
+        _fit_object_camera_coverage(
+            cfg,
+            scene,
+            object(),
+            camera,
+            clearance_tree,
+        )
+
+
+def test_object_random_quality_falls_back_to_replaced_top_k(
+    tmp_path, monkeypatch
+):
+    raw = traversal_config(tmp_path).model_dump(mode="python")
+    raw["scene"]["scene_type"] = "object"
+    sampling = raw["initialization"]["traversal"]
+    sampling["strategy"] = "random"
+    sampling["images_per_position_l"] = 1
+    sampling["random"] = {
+        "target_count_k": 2,
+        "topiq_nr_threshold_l": 0.8,
+        "device": "cuda",
+    }
+    raw["initialization"]["object"]["random_candidate_multiplier"] = 2
+    cfg = TraversalConfig.model_validate(raw)
+    position = PositionPlan(
+        0,
+        "position_0000",
+        np.array([0.0, 0.0, -20.0]),
+        np.zeros(3),
+        1.0,
+        "configured_object_exterior",
+        np.zeros(3),
+    )
+    captures = [
+        CapturePlan(position, index, f"lens_{index:04d}", 180.0, 0.0, 0.0, 70.0)
+        for index in range(6)
+    ]
+
+    class FakeAnalysis:
+        effective_gaussian_count = 1
+        center = np.zeros(3)
+        aabb_min = np.full(3, -1.0)
+        aabb_max = np.full(3, 1.0)
+        radius = 1.0
+
+        def as_dict(self):
+            return {"effective_gaussian_count": 1}
+
+    class FakeScene:
+        def __init__(self, *_args):
+            self.analysis = FakeAnalysis()
+
+        def effective_position_sample(self):
+            return np.zeros((1, 3))
+
+        def load_tensors(self):
+            return object()
+
+    class FakeRenderer:
+        def __init__(self, *_args):
+            self.g = object()
+
+        def render(self, *_args, **_kwargs):
+            return np.zeros((2, 2, 3), dtype=np.float32), object()
+
+    scores = iter([0.3, 0.9, 0.8, 0.7])
+    coverage_results = iter([False, True, True, True, True])
+    saved_metadata = []
+    written_json = {}
+    monkeypatch.setattr(traversal_module, "GaussianScene", FakeScene)
+    monkeypatch.setattr(traversal_module, "GaussianRenderer", FakeRenderer)
+    monkeypatch.setattr(
+        traversal_module, "plan_traversal", lambda *_args: ([position], captures)
+    )
+    monkeypatch.setattr(traversal_module, "_camera_frame", lambda *_args: object())
+    monkeypatch.setattr(
+        traversal_module,
+        "_fit_object_camera_coverage",
+        lambda _cfg, _scene, _renderer, camera, _tree: (
+            camera,
+            {
+                "constraints_met": next(coverage_results),
+                "minimum_pixel_ratio": 0.6,
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        traversal_module, "screen_space_quality_metrics", lambda *_args: {}
+    )
+    monkeypatch.setattr(
+        traversal_module, "_create_topiq_nr_metric", lambda _device: (object(), object())
+    )
+    monkeypatch.setattr(
+        traversal_module,
+        "_topiq_nr_score",
+        lambda *_args: next(scores),
+    )
+
+    def fake_metadata(*args, **_kwargs):
+        score = args[6]
+        return {
+            "sampling": {"strategy": "random"},
+            "image_quality": {
+                "score": score,
+                "accepted": score > 0.8,
+            },
+        }
+
+    monkeypatch.setattr(traversal_module, "_capture_metadata", fake_metadata)
+    monkeypatch.setattr(
+        traversal_module,
+        "_save_capture_pair",
+        lambda _image, _json, _rgb, metadata, _cfg: saved_metadata.append(metadata),
+    )
+    monkeypatch.setattr(
+        traversal_module,
+        "_write_json",
+        lambda path, value: written_json.__setitem__(path.name, value),
+    )
+
+    summary = run_traversal(cfg)
+
+    assert [item["image_quality"]["score"] for item in saved_metadata] == [0.9, 0.8]
+    assert [item["image_quality"]["selection_rank"] for item in saved_metadata] == [1, 2]
+    assert {
+        item["image_quality"]["selection_policy"] for item in saved_metadata
+    } == {"top_k_fallback"}
+    assert [item["topiq_nr_score"] for item in summary["captures"]] == [0.9, 0.8]
+    result = summary["random_quality_result"]
+    assert result == {
+        "target_count_k": 2,
+        "topiq_nr_threshold_l": 0.8,
+        "acceptance_condition": "topiq_nr > topiq_nr_threshold_l",
+        "retention_policy": "top_k_by_topiq_nr",
+        "candidate_budget": 4,
+        "coverage_candidate_pool": 6,
+        "attempted_count": 5,
+        "coverage_rejected_count": 1,
+        "scored_count": 4,
+        "accepted_count": 1,
+        "rejected_count": 3,
+        "saved_count": 2,
+        "completed": False,
+        "fallback_used": True,
+        "fallback_incomplete": False,
+        "termination_reason": "score_budget_exhausted",
+        "search_exhaustive": False,
+    }
+    assert written_json["traversal_summary.json"] == summary
+
+    saved_metadata.clear()
+    written_json.clear()
+    scores = iter([0.9, 0.95])
+    coverage_results = iter([True, True])
+
+    summary = run_traversal(cfg)
+
+    assert [item["image_quality"]["score"] for item in saved_metadata] == [0.95, 0.9]
+    assert {
+        item["image_quality"]["selection_policy"] for item in saved_metadata
+    } == {"threshold_complete"}
+    assert summary["random_quality_result"] == {
+        "target_count_k": 2,
+        "topiq_nr_threshold_l": 0.8,
+        "acceptance_condition": "topiq_nr > topiq_nr_threshold_l",
+        "retention_policy": "top_k_by_topiq_nr",
+        "candidate_budget": 4,
+        "coverage_candidate_pool": 6,
+        "attempted_count": 2,
+        "coverage_rejected_count": 0,
+        "scored_count": 2,
+        "accepted_count": 2,
+        "rejected_count": 0,
+        "saved_count": 2,
+        "completed": True,
+        "fallback_used": False,
+        "fallback_incomplete": False,
+        "termination_reason": "threshold_complete",
+        "search_exhaustive": False,
+    }
+    assert written_json["traversal_summary.json"] == summary
+
+    saved_metadata.clear()
+    written_json.clear()
+    scores = iter([])
+    coverage_results = iter([False] * 6)
+
+    summary = run_traversal(cfg)
+
+    assert saved_metadata == []
+    assert summary["random_quality_result"] == {
+        "target_count_k": 2,
+        "topiq_nr_threshold_l": 0.8,
+        "acceptance_condition": "topiq_nr > topiq_nr_threshold_l",
+        "retention_policy": "top_k_by_topiq_nr",
+        "candidate_budget": 4,
+        "coverage_candidate_pool": 6,
+        "attempted_count": 6,
+        "coverage_rejected_count": 6,
+        "scored_count": 0,
+        "accepted_count": 0,
+        "rejected_count": 0,
+        "saved_count": 0,
+        "completed": False,
+        "fallback_used": True,
+        "fallback_incomplete": True,
+        "termination_reason": "candidate_pool_exhausted",
+        "search_exhaustive": True,
     }
     assert written_json["traversal_summary.json"] == summary

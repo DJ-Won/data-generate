@@ -1,5 +1,5 @@
 input:
-  ply_path: "/home/wdj/projects/data-generate/3dscene/kelpies/scene.ply"
+  ply_path: "/data0/wdj/zooming/data-generate/3dscene/kelpies/scene.ply"
 
 scene:
   scene_type: "object"

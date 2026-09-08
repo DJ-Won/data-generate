@@ -26,6 +26,33 @@ conda run -n gs python generate_zoom_video.py \
   --validate-only
 ```
 
+## 使用训练相机直接渲染
+
+`render_dataset_cameras.py` 从标准 3DGS 数据目录自动读取根目录下的
+`cameras.json`（也兼容单个 `camera.json`），并选择数值最大的
+`point_cloud/iteration_*/point_cloud.ply`。启动时只需给出数据路径和输出根目录：
+
+```bash
+./scripts/render_dataset_cameras.sh \
+  /data0/wdj/datasets/dl3dv-gs/3DGS/1K/001dccbc1f78146a9f03861026613d8e73f39f372b545b26118e37a23c740d5f \
+  ./outputs/dl3dv_camera_renders
+```
+
+输出按原始图像名自然排序，并保持输入相机的宽高和 `fx/fy`：
+
+```text
+outputs/dl3dv_camera_renders/<scene_name>/
+  position_0000/lens_0000/image.png
+  position_0000/lens_0000/camera.json
+  ...
+  render_summary.json
+```
+
+完整的 `image.png + camera.json` 对在再次运行时会自动跳过，以支持断点续跑。
+半成品会明确报错，可传 `--overwrite` 修复；调试时可传 `--max-cameras 1`。
+该模式使用输入 JSON 中的原始 OpenCV/COLMAP camera-to-world 矩阵和 identity
+场景根变换，并保留 PLY 中全部数值有限的高斯。
+
 变焦任务的三个配置文件按职责严格分工：
 
 - scene：`input/scene/output/render/video/scene_analysis`，其中 `render` 只包含设备、

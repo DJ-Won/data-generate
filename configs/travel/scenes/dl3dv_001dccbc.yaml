@@ -1,8 +1,8 @@
 input:
-  ply_path: "/data0/wdj/zooming/data-generate/3dscene/bowesmuseum/scene.ply"
+  ply_path: "/data0/wdj/datasets/dl3dv-gs/3DGS/1K/001dccbc1f78146a9f03861026613d8e73f39f372b545b26118e37a23c740d5f/point_cloud/iteration_30000/point_cloud.ply"
 
 scene:
-  scene_type: "object"
+  scene_type: "interior"
   root_transform:
     translation: [0.0, 0.0, 0.0]
     rotation_euler_deg: [180.0, 0.0, 0.0]
@@ -10,8 +10,8 @@ scene:
     scale: 1.0
 
 output:
-  root_directory: "/home/wdj/projects/data-generate/outputs/bowesmuseum_traversal"
-  scene_name: "bowesmuseum"
+  root_directory: "./outputs/dl3dv_001dccbc_traversal"
+  scene_name: "001dccbc1f78146a9f03861026613d8e73f39f372b545b26118e37a23c740d5f"
   position_label_format: "position_{index:04d}"
   lens_label_format: "lens_{index:04d}"
   image_filename: "image.png"

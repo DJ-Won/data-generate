@@ -285,6 +285,24 @@ def test_robust_scene_analysis_rejects_outlier_and_nonfinite(tmp_path):
     assert scene.analysis.radius < 10
     assert scene.analysis.effective_gaussian_count <= 5
 
+
+def test_scene_analysis_can_retain_all_finite_gaussians(tmp_path):
+    raw = config_dict(tmp_path)
+    ply = tmp_path / "tiny_unfiltered.ply"
+    _write_tiny_3dgs(ply)
+    raw["input"]["ply_path"] = str(ply)
+    raw["scene_analysis"]["filter_gaussians"] = False
+    cfg = GeneratorConfig.model_validate(raw)
+    cfg.render.device = "cpu"
+
+    scene = GaussianScene(ply, cfg)
+    tensors = scene.load_tensors()
+
+    assert scene.analysis.nonfinite_count == 1
+    assert scene.analysis.effective_gaussian_count == 6
+    assert len(tensors.xyz) == 6
+
+
 def test_dc_only_3dgs_falls_back_to_sh_degree_zero(tmp_path):
     raw = config_dict(tmp_path)
     ply = tmp_path / "tiny_dc_only.ply"

@@ -1,15 +1,15 @@
 input:
-  ply_path: "/data0/wdj/zooming/data-generate/3dscene/kelpies/scene.ply"
+  ply_path: "/data0/wdj/datasets/dl3dv-gs/3DGS/1K/001dccbc1f78146a9f03861026613d8e73f39f372b545b26118e37a23c740d5f/point_cloud/iteration_30000/point_cloud.ply"
 
 scene:
   root_transform:
     translation: [0.0, 0.0, 0.0]
-    rotation_euler_deg: [180.0, 0.0, 0.0]
+    rotation_euler_deg: [0.0, 0.0, 0.0]
     rotation_order: "xyz"
     scale: 1.0
 
 output:
-  directory: "/home/wdj/projects/data-generate/outputs/zoomvid/kelpies"
+  directory: "./outputs/dl3dv/001dccbc1f78146a9f03861026613d8e73f39f372b545b26118e37a23c740d5f"
   video_filename: "zoom_video.mp4"
   save_processed_frames: true
   save_linear_frames: false

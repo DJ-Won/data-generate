@@ -203,7 +203,11 @@ class GaussianScene:
             op = self._opacity(core[:, 10], opacity_storage)
             opaque = op >= acfg.opacity_threshold
             inside = np.all(core[:, :3] >= pos_lo, axis=1) & np.all(core[:, :3] <= pos_hi, axis=1)
-            valid = finite & opaque & inside
+            valid = (
+                finite & opaque & inside
+                if acfg.filter_gaussians
+                else finite
+            )
             effective += int(valid.sum())
             nonfinite += int((~finite).sum())
             low_opacity += int((finite & ~opaque).sum())
@@ -217,6 +221,8 @@ class GaussianScene:
     def _valid_mask(self, block: np.ndarray) -> np.ndarray:
         a = self.analysis
         finite = np.isfinite(block).all(1)
+        if not self.cfg.scene_analysis.filter_gaussians:
+            return finite
         opaque = self._opacity(block[:, 10], a.opacity_storage) >= self.cfg.scene_analysis.opacity_threshold
         inside = np.all(block[:, :3] >= a.position_filter_min, axis=1) & np.all(
             block[:, :3] <= a.position_filter_max, axis=1

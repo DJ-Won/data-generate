@@ -26,7 +26,7 @@ camera:
     scene_type: "interior"
     mode: "reference_image"
     reference:
-      image_path: "/home/wdj/projects/data-generate/3dscene/garden/ref5.png"
+      image_path: "/data0/wdj/zooming/data-generate/3dscene/garden/ref5.png"
       image_paths: []
       crop_xywh: null
       reference_zoom_ratio: 1.0

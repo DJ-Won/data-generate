@@ -29,7 +29,7 @@ color:
         tone_mapping: "soft_shoulder"
     - name: "w"
       temporal_color_jump:
-        strength: 0.0
+        strength: 0.1
         position: 0.55
       color:
         exposure_ev: 0.0

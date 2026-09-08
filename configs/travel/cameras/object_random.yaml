@@ -32,7 +32,7 @@ initialization:
     center_yaw_jitter_range_deg: [-4.0, 4.0]
     center_pitch_jitter_range_deg: [-4.0, 4.0]
     roll_jitter_range_deg: [-2.0, 2.0]
-    random_candidate_multiplier: 50
+    random_candidate_multiplier: 100
     coverage:
       minimum_pixel_ratio: 0.8
       alpha_threshold: 0.02

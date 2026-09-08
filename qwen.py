@@ -4,13 +4,16 @@ import sys
 from pathlib import Path
 from typing import Any
 
-DEFAULT_MODEL = "Qwen/Qwen3-VL-2B-Instruct"
+DEFAULT_MODEL = Path(
+    "/home/wdj/.cache/huggingface/hub/"
+    "models--Qwen--Qwen3-VL-2B-Instruct"
+)
 
 INSPECTION_PROMPT = """\
 输入图像是3D Gaussian Splatting（3DGS）的渲染结果。请逐区域检查画面，然后判断是否存在明显的3D重建或渲染异常。
 
 重点检查：
-1. 是否存在天空、地面、建筑等区域大面积的未渲染空洞；
+1. 是否存在天空、地面、建筑等区域大面积的未渲染空洞(渲染空洞为黑色，其余颜色不认为是空洞)；
 2. 是否存在明显的几何拉伸、撕裂、重影；
 3. 是否存在重复物体或不符合场景空间结构的物体；
 4. 是否存在明显的Gaussian splatting伪影；
@@ -20,25 +23,21 @@ INSPECTION_PROMPT = """\
 - 正常的云、树叶、枝条、建筑结构、反射和阴影不要误判；
 - 重点寻找违反真实场景空间结构的异常；
 - 均匀的低清晰度、失焦、噪声、曝光或色彩变化本身不是重建失败；
-- 对于小面积或对整体视觉效果影响不大的模糊，不将其作为异常处理；
+- 对于小面积或对整体视觉效果影响不大的模糊、涂抹感不将其作为异常处理；
 - 画面中任意一处存在大面积的空间结构异常，valid就必须为false；
 - 只有逐一确认天空、建筑、地面、植被和前景都没有上述异常后，valid才可以为true；
-- score表示整体重建与渲染质量，必须是0到100的整数，100表示质量最好；
 - artifact是异常描述数组，每项应简洁说明异常类型和所在区域；没有明确异常时必须为空数组；
-- severity和score按以下标准校准：
-  * low：没有结构异常，只有轻微非结构画质问题，score为80到100；
-  * medium：存在局部结构异常，但不影响画面的主体理解与整体结构score为60到79，valid为true；
-  * high：异常覆盖大面积区域或严重破坏场景结构，score为0到59，valid必须为false；
-- reason用一两句话概括判断依据。
+- severity按以下标准校准：
+  * low：没有结构异常，画质良好；
+  * medium：存在局部结构异常，但不影响画面的主体理解与整体结构，valid为true；
+  * high：异常覆盖大面积区域或严重破坏场景结构，valid必须为false；
 
 按左上、右上、中央、左下、右下的顺序检查，不要跳过边缘区域。
 最终只输出一个合法JSON对象，不要复述任务，不要输出Markdown代码块或其他文字。
 对象必须恰好包含以下字段：
 - "valid"：JSON布尔值；
-- "score"：0到100的整数；
 - "artifact"：JSON字符串数组，描述异常类型和位置；
 - "severity"："low"、"medium"或"high"；
-- "reason"：非空JSON字符串。
 """
 
 
@@ -49,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("image", type=Path, help="Path to the image to inspect")
     parser.add_argument(
         "--model",
-        default=DEFAULT_MODEL,
+        default=str(DEFAULT_MODEL),
         help=f"Hugging Face model name or local path (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
@@ -84,46 +83,71 @@ def json_object(text: str) -> dict[str, Any]:
 
 
 def validate_result(result: dict[str, Any]) -> dict[str, Any]:
-    required_keys = {"valid", "score", "artifact", "severity", "reason"}
+    required_keys = {"valid", "artifact", "severity"}
     if set(result) != required_keys:
-        raise ValueError("模型输出字段必须且只能是valid、score、artifact、severity、reason")
+        raise ValueError("模型输出字段必须且只能是valid、artifact、severity")
 
     valid = result.get("valid")
-    score = result.get("score")
     artifacts = result.get("artifact")
     severity = result.get("severity")
-    reason = result.get("reason")
+
 
     if not isinstance(valid, bool):
         raise ValueError("valid必须是布尔值")
-    if isinstance(score, bool) or not isinstance(score, (int, float)):
-        raise ValueError("score必须是数字")
-    if not 0 <= score <= 100:
-        raise ValueError("score必须在0到100之间")
     if not isinstance(artifacts, list) or not all(
         isinstance(item, str) for item in artifacts
     ):
         raise ValueError("artifact必须是字符串数组")
     if severity not in {"low", "medium", "high"}:
         raise ValueError("severity必须是low、medium或high")
-    if not isinstance(reason, str) or not reason.strip():
-        raise ValueError("reason必须是非空字符串")
-    if valid and (score < 80 or artifacts or severity != "low"):
-        raise ValueError("valid=true时score必须不低于80、artifact必须为空且severity必须为low")
-    if not valid and (score >= 80 or not artifacts or severity == "low"):
-        raise ValueError(
-            "valid=false时score必须低于80、artifact必须非空且severity必须为medium或high"
-        )
-    if not valid:
-        severity = "high" if score < 50 else "medium"
-
+    
     return {
         "valid": valid,
-        "score": round(score),
         "artifact": artifacts,
         "severity": severity,
-        "reason": reason.strip(),
     }
+
+
+def resolve_model_source(model: str | Path) -> tuple[str, bool]:
+    """Resolve a Hugging Face cache root to a directly loadable snapshot."""
+    requested = Path(model).expanduser()
+    if not requested.exists():
+        return str(model), False
+    if not requested.is_dir():
+        raise ValueError(f"模型路径不是目录：{requested}")
+
+    direct = requested.resolve()
+    if (direct / "config.json").is_file():
+        return str(direct), True
+
+    candidates: list[Path] = []
+    main_ref = direct / "refs" / "main"
+    if main_ref.is_file():
+        revision = main_ref.read_text(encoding="utf-8").strip()
+        if revision and "/" not in revision and "\\" not in revision:
+            candidates.append(direct / "snapshots" / revision)
+    snapshots = direct / "snapshots"
+    if snapshots.is_dir():
+        candidates.extend(
+            sorted(
+                (path for path in snapshots.iterdir() if path.is_dir()),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )
+        )
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        has_weights = (resolved / "model.safetensors").is_file() or (
+            resolved / "model.safetensors.index.json"
+        ).is_file()
+        if (resolved / "config.json").is_file() and has_weights:
+            return str(resolved), True
+    raise ValueError(f"模型缓存中没有完整的可加载snapshot：{direct}")
 
 
 def main() -> int:
@@ -160,10 +184,15 @@ def main() -> int:
         import torch
         from transformers import AutoModelForImageTextToText, AutoProcessor
 
-        processor = AutoProcessor.from_pretrained(args.model)
+        model_source, local_files_only = resolve_model_source(args.model)
+        processor = AutoProcessor.from_pretrained(
+            model_source,
+            local_files_only=local_files_only,
+        )
         device = args.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
         model = AutoModelForImageTextToText.from_pretrained(
-            args.model,
+            model_source,
+            local_files_only=local_files_only,
             device_map=device,
             dtype="auto",
         )

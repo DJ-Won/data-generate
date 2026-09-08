@@ -1,5 +1,5 @@
 input:
-  ply_path: "/data0/wdj/datasets/dl3dv-gs/3DGS/1K/001dccbc1f78146a9f03861026613d8e73f39f372b545b26118e37a23c740d5f/point_cloud/iteration_30000/point_cloud.ply"
+  ply_path: "/data0/wdj/datasets/dl3dv-gs/3DGS/1K/0032cd2f169847864c28e5e190c2496c03ddd1a5e68d52145634164ebe57d3ac/point_cloud/iteration_30000/point_cloud.ply"
 
 scene:
   root_transform:
@@ -9,7 +9,7 @@ scene:
     scale: 1.0
 
 output:
-  directory: "./outputs/dl3dv/001dccbc1f78146a9f03861026613d8e73f39f372b545b26118e37a23c740d5f"
+  directory: "./outputs/dl3dv/032"
   video_filename: "zoom_video.mp4"
   save_processed_frames: true
   save_linear_frames: false
@@ -21,11 +21,11 @@ output:
 render:
   device: "cuda"
   sh_degree: "auto"
-  antialiasing: true
+  antialiasing: false
 
 video:
-  width: 1920
-  height: 1080
+  width: 1280
+  height: 960
   fps: 30
   total_frames: 300
   codec: "libx264"

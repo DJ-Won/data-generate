@@ -1,5 +1,5 @@
-data_path="/data0/wdj/datasets/dl3dv-gs/3DGS/1K/001dccbc1f78146a9f03861026613d8e73f39f372b545b26118e37a23c740d5f"
-output_path="/data0/wdj/zooming/data-generate/outputs/dl3dv_camera_renders"
+data_path="/data0/wdj/datasets/dl3dv-gs/3DGS/1K/0032cd2f169847864c28e5e190c2496c03ddd1a5e68d52145634164ebe57d3ac"
+output_path="/data0/wdj/zooming/data-generate/outputs/dl3dv_032"
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd -- "${script_dir}/.." && pwd)"

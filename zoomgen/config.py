@@ -70,7 +70,7 @@ class VideoConfig(StrictModel):
 
 
 class SceneAnalysisConfig(StrictModel):
-    filter_gaussians: bool = True
+    filter_gaussians: bool = False
     opacity_threshold: float = Field(default=0.02, ge=0.0, le=1.0)
     position_quantiles: tuple[float, float] = (0.01, 0.99)
     scale_extent_sigma: float = Field(default=3.0, ge=0.0)

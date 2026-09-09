@@ -112,6 +112,15 @@ class AutoFitConfig(StrictModel):
     precheck_max_attempts: int = Field(default=3, ge=1, le=8)
 
 
+class TraversalPullbackConfig(StrictModel):
+    """Optional pullback applied when a validated traversal camera JSON is made."""
+
+    enabled: bool = False
+    ratio: float = Field(default=0.35, ge=0.0, le=1.0)
+    max_distance_ratio: float = Field(default=0.75, ge=0.0)
+    boundary_margin_ratio: float = Field(default=0.02, ge=0.0, lt=1.0)
+
+
 class ClippingConfig(StrictModel):
     mode: Literal["auto", "auto_local"] = "auto"
     near_min: float = Field(default=0.001, gt=0.0)
@@ -261,6 +270,7 @@ class CameraConfig(StrictModel):
     principal_point_offset_px: tuple[float, float] = (0.0, 0.0)
     initial_view: InitialViewConfig = InitialViewConfig()
     auto_fit: AutoFitConfig = AutoFitConfig()
+    traversal_pullback: TraversalPullbackConfig = TraversalPullbackConfig()
     clipping: ClippingConfig = ClippingConfig()
     initialization: InitializationConfig = InitializationConfig()
     motion: MotionConfig = MotionConfig()

@@ -17,6 +17,11 @@ camera:
     max_largest_background_component_ratio: 0.08
     max_iterations: 20
     precheck_max_attempts: 3
+  traversal_pullback:
+    enabled: true
+    ratio: 0.35
+    max_distance_ratio: 0.75
+    boundary_margin_ratio: 0.02
   clipping:
     mode: "auto_local"
     near_min: 0.001

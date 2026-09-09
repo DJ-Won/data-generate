@@ -143,22 +143,6 @@ def _move_position_output(paths: PositionPaths, destination: Path) -> PositionPa
     return moved
 
 
-def _remove_invalid_cache(scene_directory: Path) -> bool:
-    invalid_directory = scene_directory / INVALID_OUTPUT_DIRECTORY
-    if invalid_directory.is_symlink():
-        raise RuntimeError(
-            f"refusing to remove symlinked invalid cache: {invalid_directory}"
-        )
-    if not invalid_directory.exists():
-        return False
-    if not invalid_directory.is_dir():
-        raise RuntimeError(
-            f"invalid cache path is not a directory: {invalid_directory}"
-        )
-    shutil.rmtree(invalid_directory)
-    return True
-
-
 def _save_image(path: Path, rgb: Any) -> None:
     import cv2
     import numpy as np
@@ -335,7 +319,7 @@ def _qwen_worker_main(arguments: list[str]) -> int:
 
         requested_model = str(qwen.DEFAULT_MODEL)
         requested_model = "Qwen/Qwen3-VL-8B-Instruct"
-
+        
         model_source, local_files_only = qwen.resolve_model_source(requested_model)
         processor = AutoProcessor.from_pretrained(
             model_source,
@@ -444,31 +428,6 @@ def _write_scene_config(path: Path, template: dict[str, Any], output: Path) -> N
     finally:
         if temporary.exists():
             temporary.unlink()
-
-
-def _sync_position_artifacts(
-    paths: PositionPaths,
-    *,
-    scene_directory: Path,
-    scene_template: dict[str, Any],
-    cfg: Any,
-    metadata: dict[str, Any],
-    result_entry: dict[str, Any],
-) -> None:
-    paths.lens_directory.mkdir(parents=True, exist_ok=True)
-    paths.validation_directory.mkdir(parents=True, exist_ok=True)
-    cfg.output.directory = paths.directory
-    metadata["image_relative_path"] = str(
-        paths.capture_image.relative_to(scene_directory)
-    )
-    _write_json_atomic(paths.camera_json, metadata)
-    _write_scene_config(paths.scene_config, scene_template, paths.directory)
-    if (paths.directory / "resolved_config.yaml").is_file():
-        from zoomgen.config import save_resolved_config
-
-        save_resolved_config(cfg)
-    result_entry["camera_json"] = str(paths.camera_json)
-    result_entry["validation_report"] = str(paths.validation_report)
 
 
 def _prepare_traversal(cfg: Any, scene: Any, renderer: Any) -> PreparedTraversal:
@@ -986,11 +945,6 @@ def _pipeline_main(arguments: list[str]) -> int:
     parser.add_argument("camera_config", type=Path, help="zoom camera YAML")
     parser.add_argument("color_config", type=Path, help="zoom color YAML")
     parser.add_argument("output_path", type=Path, help="output root directory")
-    parser.add_argument(
-        "--remove-cache",
-        action="store_true",
-        help="remove scene_name/invaild after the scene finishes",
-    )
     args = parser.parse_args(arguments)
 
     from render_dataset_cameras import (
@@ -1056,11 +1010,6 @@ def _pipeline_main(arguments: list[str]) -> int:
         "traversal_pullback": bootstrap_cfg.camera.traversal_pullback.model_dump(
             mode="json"
         ),
-        "output_layout": {
-            "generated": VALID_OUTPUT_DIRECTORY,
-            "not_generated": INVALID_OUTPUT_DIRECTORY,
-        },
-        "remove_cache": args.remove_cache,
         "results": [],
         "counts": {},
     }
@@ -1075,23 +1024,14 @@ def _pipeline_main(arguments: list[str]) -> int:
                 f"\n[{position_index + 1}/{len(source_cameras)}] {position_label} "
                 f"<- {source_camera.image_name}"
             )
-            valid_position_directory = (
-                scene_directory / VALID_OUTPUT_DIRECTORY / position_label
-            )
-            invalid_position_directory = (
-                scene_directory / INVALID_OUTPUT_DIRECTORY / position_label
-            )
-            legacy_position_directory = scene_directory / position_label
-            if valid_position_directory.exists():
-                paths = _position_paths(valid_position_directory)
-            elif invalid_position_directory.exists():
-                paths = _position_paths(invalid_position_directory)
-            elif legacy_position_directory.exists():
-                paths = _position_paths(legacy_position_directory)
-            else:
-                paths = _position_paths(invalid_position_directory)
-            paths.lens_directory.mkdir(parents=True, exist_ok=True)
-            paths.validation_directory.mkdir(parents=True, exist_ok=True)
+            position_directory = scene_directory / position_label
+            lens_directory = position_directory / "lens_0000"
+            validation_directory = position_directory / "validation"
+            capture_image_path = lens_directory / "image.png"
+            camera_json_path = lens_directory / "camera.json"
+            validation_report_path = validation_directory / "validation_report.json"
+            lens_directory.mkdir(parents=True, exist_ok=True)
+            validation_directory.mkdir(parents=True, exist_ok=True)
 
             source_frame = camera_frame(source_camera)
             source_frame, pullback_metadata = _adapt_traversal_camera(
@@ -1104,7 +1044,7 @@ def _pipeline_main(arguments: list[str]) -> int:
                 scene_type=scene_type,
                 position_index=position_index,
                 scene_directory=scene_directory,
-                image_path=paths.capture_image,
+                image_path=capture_image_path,
                 cameras_path=inputs.cameras_path,
                 fixed_intrinsics=fixed_intrinsics,
             )
@@ -1114,14 +1054,17 @@ def _pipeline_main(arguments: list[str]) -> int:
                 if pullback_metadata["applied_distance"] > 0.0
                 else "input_camera_json"
             )
-            _write_json_atomic(paths.camera_json, metadata)
+            _write_json_atomic(camera_json_path, metadata)
 
-            _write_scene_config(paths.scene_config, scene_template, paths.directory)
+            runtime_scene_path = validation_directory / "scene_config.yaml"
+            _write_scene_config(
+                runtime_scene_path, scene_template, position_directory
+            )
             cfg = load_config_parts(
-                paths.scene_config,
+                runtime_scene_path,
                 camera_config,
                 color_config,
-                camera_json_path=paths.camera_json,
+                camera_json_path=camera_json_path,
                 check_output=False,
             )
             result_entry: dict[str, Any] = {
@@ -1130,80 +1073,42 @@ def _pipeline_main(arguments: list[str]) -> int:
                 "source_camera_index": source_camera.source_index,
                 "source_camera_id": source_camera.source_id,
                 "source_image_name": source_camera.image_name,
-                "camera_json": str(paths.camera_json),
-                "validation_report": str(paths.validation_report),
+                "camera_json": str(camera_json_path),
+                "validation_report": str(validation_report_path),
             }
 
-            try:
-                if _video_is_complete(cfg):
-                    if paths.directory != valid_position_directory:
-                        source_directory = paths.directory
-                        paths = _move_position_output(
-                            paths, valid_position_directory
-                        )
-                        metadata = _rebase_path_values(
-                            metadata, source_directory, paths.directory
-                        )
-                    _sync_position_artifacts(
-                        paths,
-                        scene_directory=scene_directory,
-                        scene_template=scene_template,
-                        cfg=cfg,
-                        metadata=metadata,
-                        result_entry=result_entry,
-                    )
-                    result_entry["status"] = "skipped_existing"
-                    result_entry["classification"] = VALID_OUTPUT_DIRECTORY
-                    result_entry["video"] = str(
-                        cfg.output.directory / cfg.output.video_filename
-                    )
-                    pipeline_summary["results"].append(result_entry)
-                    pipeline_summary["counts"] = _summary_counts(
-                        pipeline_summary["results"]
-                    )
-                    _write_json_atomic(pipeline_summary_path, pipeline_summary)
-                    print(
-                        "Existing complete video found; moved to vaild if needed "
-                        "and continued to the next camera."
-                    )
-                    continue
-
-                if paths.directory != invalid_position_directory:
-                    source_directory = paths.directory
-                    paths = _move_position_output(
-                        paths, invalid_position_directory
-                    )
-                    metadata = _rebase_path_values(
-                        metadata, source_directory, paths.directory
-                    )
-                _sync_position_artifacts(
-                    paths,
-                    scene_directory=scene_directory,
-                    scene_template=scene_template,
-                    cfg=cfg,
-                    metadata=metadata,
-                    result_entry=result_entry,
+            if _video_is_complete(cfg):
+                result_entry["status"] = "skipped_existing"
+                result_entry["video"] = str(
+                    cfg.output.directory / cfg.output.video_filename
                 )
+                pipeline_summary["results"].append(result_entry)
+                pipeline_summary["counts"] = _summary_counts(
+                    pipeline_summary["results"]
+                )
+                _write_json_atomic(pipeline_summary_path, pipeline_summary)
+                print("Existing complete video found; continuing to the next camera.")
+                continue
+
+            try:
                 prepared = _prepare_traversal(cfg, scene, renderer)
                 endpoint_cache, endpoint_paths = _render_endpoints(
                     prepared,
                     renderer,
-                    paths.validation_directory,
-                    paths.capture_image,
+                    validation_directory,
+                    capture_image_path,
                 )
                 accepted, validation_report = _evaluate_endpoints(
-                    qwen_client, endpoint_paths, paths.validation_report
+                    qwen_client, endpoint_paths, validation_report_path
                 )
                 result_entry["qwen"] = validation_report
                 if qwen_client.broken:
                     result_entry["status"] = "evaluation_error"
-                    result_entry["classification"] = INVALID_OUTPUT_DIRECTORY
                     raise QwenWorkerUnavailable(
                         "persistent Qwen worker is unavailable; stopping the scene"
                     )
                 if not accepted:
                     result_entry["status"] = validation_report["status"]
-                    result_entry["classification"] = INVALID_OUTPUT_DIRECTORY
                     print(
                         "Rejected by endpoint quality gate; full video was not rendered."
                     )
@@ -1213,62 +1118,29 @@ def _pipeline_main(arguments: list[str]) -> int:
                         scene,
                         renderer,
                         endpoint_cache,
-                        paths.validation_report,
-                    )
-                    validation_report["status"] = "generated"
-                    validation_report["video"] = str(
-                        cfg.output.directory / cfg.output.video_filename
-                    )
-                    _write_json_atomic(paths.validation_report, validation_report)
-
-                    source_directory = paths.directory
-                    paths = _move_position_output(paths, valid_position_directory)
-                    metadata = _rebase_path_values(
-                        metadata, source_directory, paths.directory
-                    )
-                    validation_report = _rebase_path_values(
-                        validation_report, source_directory, paths.directory
-                    )
-                    result_entry["qwen"] = validation_report
-                    _sync_position_artifacts(
-                        paths,
-                        scene_directory=scene_directory,
-                        scene_template=scene_template,
-                        cfg=cfg,
-                        metadata=metadata,
-                        result_entry=result_entry,
+                        validation_report_path,
                     )
                     result_entry["status"] = "generated"
-                    result_entry["classification"] = VALID_OUTPUT_DIRECTORY
                     result_entry["video"] = str(
                         cfg.output.directory / cfg.output.video_filename
                     )
+                    validation_report["status"] = "generated"
                     validation_report["video"] = result_entry["video"]
-                    _write_json_atomic(paths.validation_report, validation_report)
+                    _write_json_atomic(validation_report_path, validation_report)
             except QwenWorkerUnavailable as exc:
                 if "status" not in result_entry:
                     result_entry["status"] = "evaluation_error"
-                result_entry["classification"] = INVALID_OUTPUT_DIRECTORY
                 result_entry["error"] = str(exc)
                 fatal_error = exc
             except Exception as exc:
                 result_entry["status"] = "render_error"
-                result_entry["classification"] = (
-                    VALID_OUTPUT_DIRECTORY
-                    if valid_position_directory.exists()
-                    and not invalid_position_directory.exists()
-                    else INVALID_OUTPUT_DIRECTORY
-                )
                 result_entry["error"] = str(exc)
                 if result_entry.get("qwen", {}).get("accepted") is True:
                     result_entry["qwen"]["status"] = "render_error"
                     result_entry["qwen"]["render_error"] = str(exc)
-                    report_path = (
-                        _position_paths(valid_position_directory).validation_report
-                        if result_entry["classification"] == VALID_OUTPUT_DIRECTORY
-                        else paths.validation_report
+                    _write_json_atomic(
+                        validation_report_path, result_entry["qwen"]
                     )
-                    _write_json_atomic(report_path, result_entry["qwen"])
                 print(f"Camera failed: {exc}", file=sys.stderr)
 
             pipeline_summary["results"].append(result_entry)
@@ -1282,29 +1154,6 @@ def _pipeline_main(arguments: list[str]) -> int:
         print(f"Fatal pipeline error: {exc}", file=sys.stderr)
     finally:
         qwen_client.close()
-
-    invalid_cache_directory = scene_directory / INVALID_OUTPUT_DIRECTORY
-    cleanup_status = "disabled"
-    if args.remove_cache:
-        if fatal_error is not None:
-            cleanup_status = "skipped_incomplete_scene"
-        else:
-            try:
-                removed = _remove_invalid_cache(scene_directory)
-                cleanup_status = "removed" if removed else "not_present"
-                if removed:
-                    print(f"Removed invalid cache: {invalid_cache_directory}")
-            except (OSError, RuntimeError) as exc:
-                fatal_error = RuntimeError(
-                    f"failed to remove invalid cache {invalid_cache_directory}: {exc}"
-                )
-                cleanup_status = "error"
-                print(str(fatal_error), file=sys.stderr)
-    pipeline_summary["invalid_cache_cleanup"] = {
-        "requested": args.remove_cache,
-        "path": str(invalid_cache_directory),
-        "status": cleanup_status,
-    }
 
     pipeline_summary["status"] = "failed" if fatal_error is not None else "completed"
     pipeline_summary["finished_at"] = _utc_now()

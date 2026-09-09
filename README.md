@@ -70,6 +70,9 @@ outputs/dl3dv_camera_renders/<scene_name>/
 JSON 中的相机位置、旋转矩阵和 `scene_root_transform` 会被严格校验，根变换与
 scene YAML 不一致时拒绝生成。JSON 中的 `scene_type` 会用于选择 object/interior
 轨迹边界规则；旧 JSON 没有该字段时保持兼容，默认按 interior 处理。
+validated 渲染入口可通过 `camera.traversal_pullback` 在写入 JSON 前沿原相机视线反向
+移动机位，以降低末端高倍率造成的几何拉伸；实际位移、原始位置和边界限幅会记录在
+`camera.traversal_pullback`，流水线摘要也会保存该配置。
 
 `generate_zoom_video.py` 不再提供 `--config` 组合配置入口。scene、camera、color
 三个拆分参数均为必填；`--camera-json` 可选，省略时按 camera YAML 的初始化策略执行。
@@ -95,6 +98,8 @@ garden 拆分配置默认输出到 `outputs/garden_zoom_ref5`，其 `overwrite: 
 - `video.width/height/fps/total_frames`：输出规格；
 - `camera.initial_view.azimuth_deg/elevation_deg`：自动视角方向；也可同时指定 `position/look_at`；
 - `camera.auto_fit.*`：alpha 覆盖目标和背景连通域限制；
+- `camera.traversal_pullback.*`：validated 渲染入口生成 camera.json 时的视线反向
+  拉远比例（相对相机到场景中心距离）；室内相机会按鲁棒 AABB 自动限幅；
 - `zoom.lenses[].zoom_min/zoom_max`：UW/W/L 物理倍率段；
 - `zoom.lenses[].temporal_color_jump`：每个镜头内一次曝光跳变的强度和位置；
 - `zoom.lenses[].color`：模组间基础色彩差异；

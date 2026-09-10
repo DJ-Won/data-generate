@@ -55,6 +55,7 @@ class PreparedTraversal:
     initialization_metadata: dict[str, Any]
     motion_scale: float
     warnings: list[str]
+    random_camera: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -334,7 +335,7 @@ def _qwen_worker_main(arguments: list[str]) -> int:
         import qwen
 
         requested_model = str(qwen.DEFAULT_MODEL)
-        requested_model = "Qwen/Qwen3-VL-8B-Instruct"
+        requested_model = "/home/wdj/.cache/huggingface/hub/models--Qwen--Qwen3-VL-8B-Instruct"
 
         model_source, local_files_only = qwen.resolve_model_source(requested_model)
         processor = AutoProcessor.from_pretrained(
@@ -471,7 +472,10 @@ def _sync_position_artifacts(
     result_entry["validation_report"] = str(paths.validation_report)
 
 
-def _prepare_traversal(cfg: Any, scene: Any, renderer: Any) -> PreparedTraversal:
+def _prepare_traversal(
+    cfg: Any, scene: Any, renderer: Any,
+    *, random_camera: dict[str, Any] | None = None,
+) -> PreparedTraversal:
     from zoomgen.alignment import resolved_pose_config
     from zoomgen.config import save_resolved_config
     from zoomgen.pipeline import precheck_trajectory, resolve_base_pose
@@ -497,6 +501,7 @@ def _prepare_traversal(cfg: Any, scene: Any, renderer: Any) -> PreparedTraversal
         initialization_metadata=initialization_metadata,
         motion_scale=motion_scale,
         warnings=warnings_out,
+        random_camera=random_camera,
     )
 
 
@@ -725,6 +730,7 @@ def _generation_summary(
         "scene": scene.analysis.as_dict(),
         "scene_root_transform": cfg.scene.root_transform.model_dump(mode="json"),
         "traversal_pullback": cfg.camera.traversal_pullback.model_dump(mode="json"),
+        "random_camera": prepared.random_camera,
         "initialization": prepared.initialization_metadata,
         "auto_fit": prepared.initialization_metadata.get("object_auto_fit"),
         "base_pose": {
@@ -903,7 +909,9 @@ def _render_full_video(
     return summary
 
 
-def _video_is_complete(cfg: Any) -> bool:
+def _video_is_complete(
+    cfg: Any, random_camera: dict[str, Any] | None = None
+) -> bool:
     from zoomgen.video import probe_video
 
     video_path = cfg.output.directory / cfg.output.video_filename
@@ -918,6 +926,8 @@ def _video_is_complete(cfg: Any) -> bool:
         return False
     current_pullback = cfg.camera.traversal_pullback.model_dump(mode="json")
     if summary.get("traversal_pullback") != current_pullback:
+        return False
+    if summary.get("random_camera") != random_camera:
         return False
     return (
         probe["frame_count"] == cfg.video.total_frames
@@ -987,11 +997,23 @@ def _pipeline_main(arguments: list[str]) -> int:
     parser.add_argument("color_config", type=Path, help="zoom color YAML")
     parser.add_argument("output_path", type=Path, help="output root directory")
     parser.add_argument(
+        "--randome_camera",
+        action="store_true",
+        help="perturb each video's camera rig and colors while preserving zoom endpoints and switch gaps",
+    )
+    parser.add_argument(
+        "--random-camera-seed",
+        type=int,
+        help="base seed for --randome_camera (default: camera.motion.seed from the YAML)",
+    )
+    parser.add_argument(
         "--remove-cache",
         action="store_true",
         help="remove scene_name/invaild after the scene finishes",
     )
     args = parser.parse_args(arguments)
+    if args.random_camera_seed is not None and not args.randome_camera:
+        parser.error("--random-camera-seed requires --randome_camera")
 
     from render_dataset_cameras import (
         _fixed_intrinsics,
@@ -1002,6 +1024,7 @@ def _pipeline_main(arguments: list[str]) -> int:
         load_camera_entries,
     )
     from zoomgen.config import load_config_parts
+    from zoomgen.random_camera import camera_random_seed, randomize_camera_config
     from zoomgen.renderer import GaussianRenderer
     from zoomgen.scene import GaussianScene
 
@@ -1029,6 +1052,11 @@ def _pipeline_main(arguments: list[str]) -> int:
         check_output=False,
     )
 
+    random_base_seed = (
+        bootstrap_cfg.camera.motion.seed
+        if args.random_camera_seed is None else args.random_camera_seed
+    )
+
     print(f"Loading and analyzing scene once: {inputs.ply_path}")
     scene = GaussianScene(inputs.ply_path, bootstrap_cfg)
     print(
@@ -1051,6 +1079,10 @@ def _pipeline_main(arguments: list[str]) -> int:
         "camera_config": str(camera_config),
         "output_scene_directory": str(scene_directory),
         "camera_count": len(source_cameras),
+        "random_camera": {
+            "enabled": args.randome_camera,
+            "base_seed": random_base_seed if args.randome_camera else None,
+        },
         "scene_type": scene_type,
         "camera_inside_robust_aabb_ratio": inside_ratio,
         "traversal_pullback": bootstrap_cfg.camera.traversal_pullback.model_dump(
@@ -1124,6 +1156,21 @@ def _pipeline_main(arguments: list[str]) -> int:
                 camera_json_path=paths.camera_json,
                 check_output=False,
             )
+            random_camera = None
+            if args.randome_camera:
+                random_seed = camera_random_seed(
+                    random_base_seed,
+                    str(inputs.data_path),
+                    f"{source_camera.source_index}:{source_camera.image_name}",
+                )
+                cfg, random_camera = randomize_camera_config(cfg, random_seed)
+                metadata["random_camera"] = random_camera
+                # The camera JSON remains the common base pose; these offsets
+                # and the resolved config describe the individual modules.
+                metadata["camera"]["randomized_lens_offsets_ratio"] = {
+                    lens.name: list(lens.camera_center_offset_ratio)
+                    for lens in cfg.zoom.lenses
+                }
             result_entry: dict[str, Any] = {
                 "position_index": position_index,
                 "position_label": position_label,
@@ -1132,10 +1179,11 @@ def _pipeline_main(arguments: list[str]) -> int:
                 "source_image_name": source_camera.image_name,
                 "camera_json": str(paths.camera_json),
                 "validation_report": str(paths.validation_report),
+                "random_camera": random_camera,
             }
 
             try:
-                if _video_is_complete(cfg):
+                if _video_is_complete(cfg, random_camera):
                     if paths.directory != valid_position_directory:
                         source_directory = paths.directory
                         paths = _move_position_output(
@@ -1184,7 +1232,9 @@ def _pipeline_main(arguments: list[str]) -> int:
                     metadata=metadata,
                     result_entry=result_entry,
                 )
-                prepared = _prepare_traversal(cfg, scene, renderer)
+                prepared = _prepare_traversal(
+                    cfg, scene, renderer, random_camera=random_camera
+                )
                 endpoint_cache, endpoint_paths = _render_endpoints(
                     prepared,
                     renderer,

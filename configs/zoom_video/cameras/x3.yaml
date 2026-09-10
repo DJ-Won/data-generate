@@ -19,8 +19,8 @@ camera:
     precheck_max_attempts: 3
   traversal_pullback:
     enabled: true
-    ratio: 0.35
-    max_distance_ratio: 0.75
+    ratio: 0.3
+    max_distance_ratio: 0.7
     boundary_margin_ratio: 0.02
   clipping:
     mode: "auto_local"

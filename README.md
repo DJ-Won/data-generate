@@ -74,6 +74,34 @@ validated 渲染入口可通过 `camera.traversal_pullback` 在写入 JSON 前�
 移动机位，以降低末端高倍率造成的几何拉伸；实际位移、原始位置和边界限幅会记录在
 `camera.traversal_pullback`，流水线摘要也会保存该配置。
 
+`render_validated_zoom_dataset.py` 可通过 `--randome_camera` 启用相机扰动：
+
+```bash
+python render_validated_zoom_dataset.py <data_path> \
+  configs/zoom_video/cameras/x3.yaml \
+  configs/zoom_video/colors/multicamera_low.yaml <output_path> \
+  --randome_camera
+```
+
+也可在 `scripts/render_validated_zoom_dataset.sh <data_path>` 后追加该开关。
+每个场景的每个机位采样一组固定的手机多镜头参数，在输入配置上叠加小幅变化：
+
+- 共享位置偏移和逐镜头光心偏移，每轴增量最多为场景半径的 0.175%（前后方向
+  0.035%）；保留共同的基准朝向。原配置关闭运动时只激活镜头光心偏移，连续运动
+  幅度保持为零；镜头切换仍按配置硬切或短暂过渡。
+- 共享曝光变化 ±0.10 EV、逐镜头变化 ±0.06 EV，并防止相邻镜头的曝光差异被抵消
+  （保留原差异方向，差异至少为原值的 60% 或 0.04 EV）；白平衡、颜色矩阵、对比度、
+  饱和度、gamma、暗角和噪声做小幅扰动，镜头内已有曝光跳变保留符号，关闭的跳变保持关闭。
+- 只移动内部倍率切换边界，移动幅度不超过相邻较短倍率段的 12%，保留切换间隙。
+  镜头顺序、全局最小/最大倍率及 1× 焦距基准不变；每帧倍率严格递增。分帧或过渡长度
+  不合法时自动缩小倍率扰动。`x3.yaml` 的全局范围仍为 0.5×–3.0×。
+
+默认以 `camera.motion.seed` 为基础，结合场景和源相机身份派生确定性种子；
+可用 `--random-camera-seed 123` 更换一组扰动。实际参数写入 `resolved_config.yaml`，
+种子和参数摘要写入 `generation_summary.json`，续跑会检查随机模式及参数是否一致。
+`lens_0000/camera.json` 保留共同基准机位并记录各镜头扰动后的光心偏移，实际每帧外参
+见 `camera_trajectory.json`。扰动后的首尾帧仍需通过 Qwen 检查。
+
 `generate_zoom_video.py` 不再提供 `--config` 组合配置入口。scene、camera、color
 三个拆分参数均为必填；`--camera-json` 可选，省略时按 camera YAML 的初始化策略执行。
 

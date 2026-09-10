@@ -58,6 +58,10 @@ def build_schedule(cfg: GeneratorConfig) -> list[FrameSchedule]:
         if cfg.zoom.curve == "smoothstep":
             t = t * t * (3.0 - 2.0 * t)
         zooms = lens.zoom_min + (lens.zoom_max - lens.zoom_min) * t
+        # Assign endpoints explicitly: a + (b - a) can differ from b by one ULP.
+        zooms[0] = lens.zoom_min
+        if count > 1:
+            zooms[-1] = lens.zoom_max
         for local_i, zoom in enumerate(zooms):
             result.append(
                 FrameSchedule(
